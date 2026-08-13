@@ -1,0 +1,7 @@
+{
+  "countryId": "iceland",
+  "countryName": "Iceland",
+  "aliases": ["冰岛"],
+  "visibility": "private",
+  "notes": "Optional Agent-authored mapping. Folder names are sufficient when they match current TravelAtlas country and city names."
+}

@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.codex/
+*.tsbuildinfo
+*.local
+
+# Private media intake and generated user library
+02_Assets/MediaInbox/*
+!02_Assets/MediaInbox/README.md
+!02_Assets/MediaInbox/_country-template/
+!02_Assets/MediaInbox/_country-template/**
+01_Web/public/media/user/
+01_Web/src/data/generated/*.local.*
+02_Assets/PrivateData/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+*secret*
+*token*
+*cookie*
+credentials.json
+token.json
+private_key.pem
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

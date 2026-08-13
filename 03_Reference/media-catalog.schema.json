@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travelatlas.local/schemas/media-catalog.schema.json",
+  "title": "TravelAtlas Local Media Catalog",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "privacyLevel", "items"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "privacyLevel": {
+      "const": "local-only"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/mediaItem"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "position": {
+      "type": "object",
+      "required": ["lat", "lng"],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lng": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "altitudeMeters": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "mediaItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "scope",
+        "countryId",
+        "countryName",
+        "cityId",
+        "cityName",
+        "src",
+        "originalFileName",
+        "isCover",
+        "status"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": ["photo", "panorama360", "aerialPhoto", "video"]
+        },
+        "scope": {
+          "const": "city"
+        },
+        "countryId": { "type": "string", "minLength": 1 },
+        "countryName": { "type": "string", "minLength": 1 },
+        "cityId": { "type": "string", "minLength": 1 },
+        "cityName": { "type": "string", "minLength": 1 },
+        "src": { "type": "string", "pattern": "^/media/user/" },
+        "originalFileName": { "type": "string", "minLength": 1 },
+        "titleZh": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "resolution": { "type": "string" },
+        "captureType": { "type": "string" },
+        "description": { "type": "string" },
+        "position": { "$ref": "#/$defs/position" },
+        "isCover": { "type": "boolean" },
+        "status": {
+          "enum": ["ready", "needsMetadata"]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travelatlas.local/schemas/travel-map.schema.json",
+  "title": "TravelAtlas Journey Data",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "privacy_level", "records"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "generated_at": { "type": "string", "format": "date" },
+    "privacy_level": {
+      "enum": ["public-sample", "local-only"]
+    },
+    "intended_use": { "type": "string" },
+    "safety_notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "overviewTarget": {
+          "type": "object",
+          "required": ["lat", "lng"],
+          "properties": {
+            "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+            "lng": { "type": "number", "minimum": -180, "maximum": 180 }
+          },
+          "additionalProperties": false
+        },
+        "hiddenCountries": { "$ref": "#/$defs/stringArray" },
+        "originCountries": { "$ref": "#/$defs/stringArray" },
+        "regionMatchers": { "$ref": "#/$defs/stringArray" },
+        "hiddenCityNames": { "$ref": "#/$defs/stringArray" },
+        "countryCodes": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "pattern": "^[a-zA-Z]{2}$" }
+        },
+        "countryAliases": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["country", "country_en"],
+            "properties": {
+              "country": { "type": "string" },
+              "country_en": { "type": "string" },
+              "regionSuffix": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "journeyRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["includes", "id"],
+            "properties": {
+              "includes": { "$ref": "#/$defs/stringArray" },
+              "id": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "records": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/record" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "record": {
+      "type": "object",
+      "required": [
+        "id",
+        "country",
+        "country_en",
+        "city",
+        "city_en",
+        "start_date",
+        "status",
+        "lat",
+        "lng"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "country": { "type": "string", "minLength": 1 },
+        "country_en": { "type": "string", "minLength": 1 },
+        "country_code": { "type": "string", "pattern": "^[a-zA-Z]{2}$" },
+        "city": { "type": "string", "minLength": 1 },
+        "city_en": { "type": "string", "minLength": 1 },
+        "region": { "type": "string" },
+        "start_date": { "type": "string", "format": "date" },
+        "end_date": { "type": "string", "format": "date" },
+        "year": { "type": "integer" },
+        "trip_title": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "enum": ["visited", "planned"] },
+        "lat": { "type": ["number", "null"], "minimum": -90, "maximum": 90 },
+        "lng": { "type": ["number", "null"], "minimum": -180, "maximum": 180 },
+        "notes": { "type": "string" },
+        "source": { "type": "string" },
+        "travelCategory": {
+          "enum": ["destination", "transit", "origin", "return", "dayTrip", "region", "attraction"]
+        },
+        "hiddenFromHome": { "type": "boolean" },
+        "journeyId": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

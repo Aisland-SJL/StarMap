@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-12",
+  "privacy_level": "public-sample",
+  "intended_use": "Neutral open-source TravelAtlas demonstration data.",
+  "display": {
+    "overviewTarget": {
+      "lat": 64,
+      "lng": -13
+    },
+    "hiddenCountries": [],
+    "originCountries": [],
+    "regionMatchers": [],
+    "hiddenCityNames": [],
+    "countryAliases": {},
+    "countryCodes": {
+      "Iceland": "is",
+      "Faroe Islands": "fo"
+    },
+    "journeyRules": []
+  },
+  "safety_notes": [
+    "Fictional itinerary assembled from public geographic facts.",
+    "Replace this sample with generated/travel-map.local.json for personal use."
+  ],
+  "records": [
+    {
+      "id": "sample_reykjavik",
+      "country": "冰岛",
+      "country_en": "Iceland",
+      "country_code": "is",
+      "city": "雷克雅未克",
+      "city_en": "Reykjavik",
+      "region": "North Atlantic",
+      "start_date": "2025-06-01",
+      "end_date": "2025-06-02",
+      "year": 2025,
+      "trip_title": "2025 North Atlantic Demo",
+      "type": "city",
+      "status": "visited",
+      "lat": 64.1466,
+      "lng": -21.9426,
+      "notes": "Sample city record.",
+      "source": "TravelAtlas public sample"
+    },
+    {
+      "id": "sample_vik",
+      "country": "冰岛",
+      "country_en": "Iceland",
+      "country_code": "is",
+      "city": "维克",
+      "city_en": "Vik",
+      "region": "North Atlantic",
+      "start_date": "2025-06-03",
+      "end_date": "2025-06-03",
+      "year": 2025,
+      "trip_title": "2025 North Atlantic Demo",
+      "type": "daytrip",
+      "status": "visited",
+      "lat": 63.4186,
+      "lng": -19.006,
+      "notes": "Sample landscape stop.",
+      "source": "TravelAtlas public sample"
+    },
+    {
+      "id": "sample_akureyri",
+      "country": "冰岛",
+      "country_en": "Iceland",
+      "country_code": "is",
+      "city": "阿克雷里",
+      "city_en": "Akureyri",
+      "region": "North Atlantic",
+      "start_date": "2025-06-04",
+      "end_date": "2025-06-05",
+      "year": 2025,
+      "trip_title": "2025 North Atlantic Demo",
+      "type": "city",
+      "status": "visited",
+      "lat": 65.6885,
+      "lng": -18.1262,
+      "notes": "Sample northern city record.",
+      "source": "TravelAtlas public sample"
+    },
+    {
+      "id": "sample_torshavn",
+      "country": "法罗群岛",
+      "country_en": "Faroe Islands",
+      "country_code": "fo",
+      "city": "托尔斯港",
+      "city_en": "Torshavn",
+      "region": "North Atlantic",
+      "start_date": "2025-06-06",
+      "end_date": "2025-06-07",
+      "year": 2025,
+      "trip_title": "2025 North Atlantic Demo",
+      "type": "city",
+      "status": "visited",
+      "lat": 62.0079,
+      "lng": -6.7900,
+      "notes": "Sample island capital record.",
+      "source": "TravelAtlas public sample"
+    },
+    {
+      "id": "sample_gjogv",
+      "country": "法罗群岛",
+      "country_en": "Faroe Islands",
+      "country_code": "fo",
+      "city": "杰格夫",
+      "city_en": "Gjogv",
+      "region": "North Atlantic",
+      "start_date": "2025-06-08",
+      "end_date": "2025-06-08",
+      "year": 2025,
+      "trip_title": "2025 North Atlantic Demo",
+      "type": "daytrip",
+      "status": "visited",
+      "lat": 62.3250,
+      "lng": -6.9400,
+      "notes": "Sample coastal village record.",
+      "source": "TravelAtlas public sample"
+    }
+  ]
+}

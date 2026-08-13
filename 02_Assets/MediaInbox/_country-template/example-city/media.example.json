@@ -1,0 +1,16 @@
+{
+  "drone/DJI_0001.JPG": {
+    "kind": "panorama360",
+    "titleZh": "城市无人机全景 01",
+    "titleEn": "City Drone Panorama 01",
+    "date": "2026-01-01",
+    "resolution": "8192 × 4096",
+    "captureType": "Drone 360 Panorama",
+    "description": "Optional public description.",
+    "position": {
+      "lat": 0,
+      "lng": 0,
+      "altitudeMeters": 0
+    }
+  }
+}
