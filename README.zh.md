@@ -6,6 +6,28 @@
 
 Travel Atlas 使用 React、TypeScript、Vite 与 Cesium 构建。全新下载的仓库只包含中性的示例数据；你的旅行记录、媒体、编辑状态与环境配置默认都保存在被 Git 忽略的本地文件中。
 
+## 产品预览
+
+<table>
+  <tr>
+    <td width="68%"><img src="docs/images/01-globe-overview.webp" alt="Travel Atlas 地球整体效果预览"></td>
+    <td width="32%"><strong>浏览地球上的任何角落</strong><br><br>从完整的世界视角出发，前往地球上的任意地点；已经访问的国家、城市和旅程路线都会显示在地球上。</td>
+  </tr>
+  <tr>
+    <td width="68%"><img src="docs/images/02-meteor-galaxy-closeup.webp" alt="流星雨、银河和地球近景"></td>
+    <td width="32%"><strong>从银河一直看到地面瓦片</strong><br><br>拉近镜头可以观察流星雨和银河，并继续靠近地表，查看每一处地形与影像瓦片的细节。</td>
+  </tr>
+  <tr>
+    <td width="68%"><img src="docs/images/03-city-location-and-altitude.webp" alt="城市面板与照片无人机坐标"></td>
+    <td width="32%"><strong>精准显示城市中的拍摄位置</strong><br><br>打开城市面板后，可以按坐标与高度定位城市中的照片和无人机素材，同时浏览城市照片与媒体入口。</td>
+  </tr>
+  <tr>
+    <td width="68%"><img src="docs/images/04-drone-panorama-viewer.webp" alt="无人机 360 度全景 Viewer"></td>
+    <td width="32%"><strong>无人机 360° 全景 Viewer</strong><br><br>在地图内部直接打开无人机全景图，通过内置 Viewer 沉浸式浏览、拖动和缩放，无需离开 Travel Atlas。</td>
+  </tr>
+</table>
+
+
 ## 主要功能
 
 - 可交互的 Cesium 地球，支持国家、城市、路线与镜头导航。

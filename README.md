@@ -6,6 +6,28 @@ An open-source, local-first 3D travel atlas for turning places, journeys, photog
 
 Travel Atlas is built with React, TypeScript, Vite, and Cesium. A clean clone opens with neutral sample data. Your own journeys, media, editor state, and environment values stay in Git-ignored local files by default.
 
+## Product preview
+
+<table>
+  <tr>
+    <td width="68%"><img src="docs/images/01-globe-overview.webp" alt="Travel Atlas globe overview"></td>
+    <td width="32%"><strong>Explore the whole globe</strong><br><br>Start from a complete world view and travel to any corner of the Earth. Visited countries, cities, and journey routes remain visible on the globe.</td>
+  </tr>
+  <tr>
+    <td width="68%"><img src="docs/images/02-meteor-galaxy-closeup.webp" alt="Meteor shower, Milky Way, and close globe view"></td>
+    <td width="32%"><strong>From the Milky Way to ground tiles</strong><br><br>Move closer to see the meteor shower and Milky Way, then continue zooming toward detailed terrain and imagery tiles on the surface.</td>
+  </tr>
+  <tr>
+    <td width="68%"><img src="docs/images/03-city-location-and-altitude.webp" alt="City panel with precise photo and drone positions"></td>
+    <td width="32%"><strong>City-level media positions</strong><br><br>Open a city panel to locate photographs and drone media by their precise coordinates and altitude, while browsing the city's photos and media entries.</td>
+  </tr>
+  <tr>
+    <td width="68%"><img src="docs/images/04-drone-panorama-viewer.webp" alt="Drone 360 panorama Viewer"></td>
+    <td width="32%"><strong>Drone 360° panorama Viewer</strong><br><br>Open aerial panoramas inside the built-in Viewer for an immersive, zoomable view without leaving the atlas.</td>
+  </tr>
+</table>
+
+
 ## Highlights
 
 - Interactive Cesium globe with country, city, route, and camera navigation.
