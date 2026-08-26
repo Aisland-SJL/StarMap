@@ -43,7 +43,7 @@ const isNewerVersion = (candidate: string, current: string) => {
   return false
 }
 
-const updatePrompt = (release: GitHubRelease) => `请帮我安全更新 Travel Atlas 到 ${release.tag_name}。
+const updatePrompt = (release: GitHubRelease) => `请帮我安全更新 StarMap 到 ${release.tag_name}。
 
 开始前先读取项目中的 AGENTS.md、README 和 Handoff（如果存在），检查我当前的 Git 状态、本地修改和私有数据边界。请从上游 Release ${release.html_url} 获取变更，先解释哪些文件会受影响，再以合并方式更新；不要覆盖我的 .env.local、私有旅行数据、个人媒体或未提交修改。若出现冲突，保留我的内容并逐项说明。完成后运行项目规定的 lint、build、privacy:check 和 media:check，并报告仍需我决定的事项。`
 

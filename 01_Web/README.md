@@ -13,7 +13,7 @@ Use port 5175 when the read-only rollback project is still occupying 5174.
 
 ## One Product, Two Runtime States
 
-TravelAtlas is one codebase, not separate public and editor editions:
+StarMap is one codebase, not separate public and editor editions:
 
 - `npm run dev -- --host 127.0.0.1 --port 5175` starts the **local editing state**. Small settings controls appear beside Country Maps, City Cards, City Photos, and Drone Media. Changes are saved directly to ignored local data, with backups and atomic writes; photo uploads enter the immutable `MediaInbox` first and then use the existing three-tier importer.
 - `npm run build` creates the **public display state**. Editing controls are not rendered and the local write middleware does not exist. The output is a static website containing only the data and media deliberately included in that build.
@@ -39,7 +39,7 @@ npm run build
 
 ## Public Sample and Private Data
 
-TravelAtlas has two data layers:
+StarMap has two data layers:
 
 - `src/data/travel-map.sample.json` is a tracked neutral North Atlantic demonstration used by a clean open-source clone.
 - `src/data/generated/travel-map.local.json` is an ignored local overlay containing the owner's countries, cities, routes, coordinates, and display rules.
@@ -50,7 +50,7 @@ Run `npm run privacy:check` before preparing any public repository. See the [ope
 
 ## Import Personal Media
 
-Users can simply ask an Agent to read the TravelAtlas rules and explain how to import their photos. The Agent starts with the short [Media Inbox README](../02_Assets/MediaInbox/README.md), checks that every item has a reliable existing country and city, and asks before proceeding whenever required information is missing or uncertain.
+Users can simply ask an Agent to read the StarMap rules and explain how to import their photos. The Agent starts with the short [Media Inbox README](../02_Assets/MediaInbox/README.md), checks that every item has a reliable existing country and city, and asks before proceeding whenever required information is missing or uncertain.
 
 After the files follow the tracked Inbox template, run:
 
@@ -67,7 +67,7 @@ See [`../03_Reference/TravelAtlas_media_import_protocol.md`](../03_Reference/Tra
 
 ## Environment and Cesium ion
 
-TravelAtlas remains runnable without Cesium ion: when `VITE_CESIUM_ION_TOKEN` is empty, the app uses the bundled low-resolution Natural Earth II map. To enable online global imagery, the person who develops or deploys this copy of TravelAtlas must use an app-specific token from their own Cesium ion account. Website visitors do not configure tokens, and a clean open-source clone never inherits the project author's token.
+TravelAtlas remains runnable without Cesium ion: when `VITE_CESIUM_ION_TOKEN` is empty, the app uses the bundled low-resolution Natural Earth II map. To enable online global imagery, the person who develops or deploys this copy of StarMap must use an app-specific token from their own Cesium ion account. Website visitors do not configure tokens, and a clean open-source clone never inherits the project author's token.
 
 For local development, copy `.env.example` to the ignored `.env.local` and enter the value there yourself. Create your own token at [Cesium ion Access Tokens](https://ion.cesium.com/tokens). An Agent may guide the setup, but it must never ask you to paste the complete token into chat or read it back. For production, configure `VITE_CESIUM_ION_TOKEN` in the hosting platform. Never commit or paste a real token into chat, source code, documentation, logs, screenshots, or examples.
 
@@ -75,7 +75,7 @@ A Vite client variable is excluded from Git but is still observable by users of 
 
 ## Public Interface Defaults
 
-The public template uses the neutral `Travel Atlas` identity. Its enlarged primary navigation contains only Map and Journey. The document language defaults to `zh-CN`; no Chinese/English selector is rendered. The center-bottom dock contains three equal icon buttons: hide/show sidebars, summon a meteor shower, and open version updates. The meteor button is a single-click action rather than a toggle: it directly reuses the previously approved implementation to summon a dense three-second shower with its original trajectories, luminous heads, fading tails, timing, and density.
+The public template uses the neutral `StarMap` identity. Its enlarged primary navigation contains only Map and Journey. The document language defaults to `zh-CN`; no Chinese/English selector is rendered. The center-bottom dock contains three equal icon buttons: hide/show sidebars, summon a meteor shower, and open version updates. The meteor button is a single-click action rather than a toggle: it directly reuses the previously approved implementation to summon a dense three-second shower with its original trajectories, luminous heads, fading tails, timing, and density.
 
 The public interface deliberately uses neutral copy that a new user can replace with their own identity.
 

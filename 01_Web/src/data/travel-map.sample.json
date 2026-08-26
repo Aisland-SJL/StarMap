@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_at": "2026-08-12",
   "privacy_level": "public-sample",
-  "intended_use": "Neutral open-source TravelAtlas demonstration data.",
+  "intended_use": "Neutral open-source StarMap demonstration data.",
   "display": {
     "overviewTarget": {
       "lat": 64,
@@ -41,7 +41,7 @@
       "lat": 64.1466,
       "lng": -21.9426,
       "notes": "Sample city record.",
-      "source": "TravelAtlas public sample"
+      "source": "StarMap public sample"
     },
     {
       "id": "sample_vik",
@@ -60,7 +60,7 @@
       "lat": 63.4186,
       "lng": -19.006,
       "notes": "Sample landscape stop.",
-      "source": "TravelAtlas public sample"
+      "source": "StarMap public sample"
     },
     {
       "id": "sample_akureyri",
@@ -79,7 +79,7 @@
       "lat": 65.6885,
       "lng": -18.1262,
       "notes": "Sample northern city record.",
-      "source": "TravelAtlas public sample"
+      "source": "StarMap public sample"
     },
     {
       "id": "sample_torshavn",
@@ -98,7 +98,7 @@
       "lat": 62.0079,
       "lng": -6.7900,
       "notes": "Sample island capital record.",
-      "source": "TravelAtlas public sample"
+      "source": "StarMap public sample"
     },
     {
       "id": "sample_gjogv",
@@ -117,7 +117,7 @@
       "lat": 62.3250,
       "lng": -6.9400,
       "notes": "Sample coastal village record.",
-      "source": "TravelAtlas public sample"
+      "source": "StarMap public sample"
     }
   ]
 }

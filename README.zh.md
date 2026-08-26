@@ -4,13 +4,13 @@
 
 一个开源、本地优先的 3D 旅行地图，用交互式地球展示地点、旅程、照片与无人机影像，也可以作为个人作品集中的旅行项目。
 
-Travel Atlas 使用 React、TypeScript、Vite 与 Cesium 构建。全新下载的仓库只包含中性的示例数据；你的旅行记录、媒体、编辑状态与环境配置默认都保存在被 Git 忽略的本地文件中。
+StarMap 使用 React、TypeScript、Vite 与 Cesium 构建。全新下载的仓库只包含中性的示例数据；你的旅行记录、媒体、编辑状态与环境配置默认都保存在被 Git 忽略的本地文件中。
 
 ## 产品预览
 
 <table>
   <tr>
-    <td width="68%"><img src="docs/images/01-globe-overview.webp" alt="Travel Atlas 地球整体效果预览"></td>
+    <td width="68%"><img src="docs/images/01-globe-overview.webp" alt="StarMap 地球整体效果预览"></td>
     <td width="32%"><strong>浏览地球上的任何角落</strong><br><br>从完整的世界视角出发，前往地球上的任意地点；已经访问的国家、城市和旅程路线都会显示在地球上。</td>
   </tr>
   <tr>
@@ -23,7 +23,7 @@ Travel Atlas 使用 React、TypeScript、Vite 与 Cesium 构建。全新下载�
   </tr>
   <tr>
     <td width="68%"><img src="docs/images/04-drone-panorama-viewer.webp" alt="无人机 360 度全景 Viewer"></td>
-    <td width="32%"><strong>无人机 360° 全景 Viewer</strong><br><br>在地图内部直接打开无人机全景图，通过内置 Viewer 沉浸式浏览、拖动和缩放，无需离开 Travel Atlas。</td>
+    <td width="32%"><strong>无人机 360° 全景 Viewer</strong><br><br>在地图内部直接打开无人机全景图，通过内置 Viewer 沉浸式浏览、拖动和缩放，无需离开 StarMap。</td>
   </tr>
 </table>
 
@@ -46,7 +46,7 @@ Travel Atlas 使用 React、TypeScript、Vite 与 Cesium 构建。全新下载�
 
 ```powershell
 git clone https://github.com/Aisland-SJL/StarMap.git
-cd TravelAtlas/01_Web
+cd StarMap/01_Web
 npm ci
 Copy-Item .env.example .env.local
 npm run dev -- --host 127.0.0.1 --port 5175
@@ -56,7 +56,7 @@ npm run dev -- --host 127.0.0.1 --port 5175
 
 ## Cesium ion Token——第一次使用先做这一步
 
-不配置 token 时，Travel Atlas 仍会使用内置的低清 Natural Earth II 底图启动。需要 Cesium ion 在线全球影像时：
+不配置 token 时，StarMap 仍会使用内置的低清 Natural Earth II 底图启动。需要 Cesium ion 在线全球影像时：
 
 1. 登录或注册 [Cesium ion](https://ion.cesium.com/)。
 2. 打开 [Access Tokens](https://ion.cesium.com/tokens)，创建一个应用专用的公开 token。
@@ -74,7 +74,7 @@ npm run dev -- --host 127.0.0.1 --port 5175
 
 开发模式会显示本地编辑控件，可新增和排序国家、城市，隐藏或恢复条目，选择照片封面，以及导入城市照片和无人机媒体。生产构建不会包含这些写入控件。
 
-选择无人机文件后，Travel Atlas 会立即逐个读取可用的 EXIF/XMP 信息。文件中已经存在的值会作为“文件读取”结果锁定；只有缺失字段才可填写。缺少日期时必须补充，坐标与高度可以留空。
+选择无人机文件后，StarMap 会立即逐个读取可用的 EXIF/XMP 信息。文件中已经存在的值会作为“文件读取”结果锁定；只有缺失字段才可填写。缺少日期时必须补充，坐标与高度可以留空。
 
 批量导入媒体时，按照仓库模板把源文件放进 `02_Assets/MediaInbox/`，然后在 `01_Web/` 运行：
 

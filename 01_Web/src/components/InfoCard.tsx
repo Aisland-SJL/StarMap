@@ -184,7 +184,7 @@ export function InfoCard({ mode, selectedCountryId, selectedCityId, onSelectCity
     })
   }
   const eyebrowLabel = isOverview ? 'Overview' : isCityMode ? 'City info' : 'Selected country'
-  const title = isOverview ? 'TravelAtlas' : isCityMode ? city.nameZh : country.nameZh
+  const title = isOverview ? 'StarMap' : isCityMode ? city.nameZh : country.nameZh
   const continentName = getContinentName(country)
   const titleDetail = isOverview
     ? 'Journey map overview'

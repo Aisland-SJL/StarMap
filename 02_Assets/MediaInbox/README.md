@@ -1,4 +1,4 @@
-# TravelAtlas Media Inbox
+# StarMap Media Inbox
 
 This is the single user-facing entrance for personal photos and drone media. Users organize files only by country, city, and the two media folders shown below; an Agent handles validation and import.
 
@@ -6,15 +6,15 @@ This is the single user-facing entrance for personal photos and drone media. Use
 
 Users do not need to memorize commands. Ask:
 
-> 请阅读 TravelAtlas 的相关规则，并告诉我如何上传照片。
+> 请阅读 StarMap 的相关规则，并告诉我如何上传照片。
 
-> Read TravelAtlas's project rules and tell me how to import my photos.
+> Read StarMap's project rules and tell me how to import my photos.
 
 The Agent must explain the folder placement first. It must not modify files or run the import unless the user also asks it to perform the import.
 
 ## User Workflow
 
-1. Copy `_country-template/` and rename the copy to a country already present in TravelAtlas, for example `Iceland` or `冰岛`.
+1. Copy `_country-template/` and rename the copy to a country already present in StarMap, for example `Iceland` or `冰岛`.
 2. Rename `example-city/` to a city already present in that country, for example `Reykjavik` or `雷克雅未克`. Add one city folder for every additional city.
 3. Put ordinary city photos in `<city-name>/photos/`.
 4. Put that city's drone photos, 360 panoramas, and drone videos in `<city-name>/drone/`. Do not create more type folders.

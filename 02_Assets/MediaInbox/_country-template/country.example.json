@@ -3,5 +3,5 @@
   "countryName": "Iceland",
   "aliases": ["冰岛"],
   "visibility": "private",
-  "notes": "Optional Agent-authored mapping. Folder names are sufficient when they match current TravelAtlas country and city names."
+  "notes": "Optional Agent-authored mapping. Folder names are sufficient when they match current StarMap country and city names."
 }

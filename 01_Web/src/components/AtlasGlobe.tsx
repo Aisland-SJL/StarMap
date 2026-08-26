@@ -185,7 +185,7 @@ export function AtlasGlobe({
           el.className = isActive ? 'globe-pin globe-pin-active' : isCountryCity ? 'globe-pin globe-pin-country' : 'globe-pin'
           el.style.setProperty('--pin-color', pinAccent)
           el.style.setProperty('--pin-size', `${city.size}`)
-          el.title = `${city.nameEn}, ${cityCountry?.nameEn ?? 'TravelAtlas'}`
+          el.title = `${city.nameEn}, ${cityCountry?.nameEn ?? 'StarMap'}`
           el.onclick = () => onSelectCity(city.id)
           el.innerHTML = `<span class="globe-pin-pulse"></span><span class="globe-pin-dot"></span>${
             isActive ? `<span class="globe-pin-label">${city.nameEn ?? ''}</span>` : ''

@@ -4,13 +4,13 @@
 
 An open-source, local-first 3D travel atlas for turning places, journeys, photographs, and aerial media into an interactive personal map.
 
-Travel Atlas is built with React, TypeScript, Vite, and Cesium. A clean clone opens with neutral sample data. Your own journeys, media, editor state, and environment values stay in Git-ignored local files by default.
+StarMap is built with React, TypeScript, Vite, and Cesium. A clean clone opens with neutral sample data. Your own journeys, media, editor state, and environment values stay in Git-ignored local files by default.
 
 ## Product preview
 
 <table>
   <tr>
-    <td width="68%"><img src="docs/images/01-globe-overview.webp" alt="Travel Atlas globe overview"></td>
+    <td width="68%"><img src="docs/images/01-globe-overview.webp" alt="StarMap globe overview"></td>
     <td width="32%"><strong>Explore the whole globe</strong><br><br>Start from a complete world view and travel to any corner of the Earth. Visited countries, cities, and journey routes remain visible on the globe.</td>
   </tr>
   <tr>
@@ -46,7 +46,7 @@ Requirements: Git and a current Node.js LTS release compatible with Vite 8.
 
 ```powershell
 git clone https://github.com/Aisland-SJL/StarMap.git
-cd TravelAtlas/01_Web
+cd StarMap/01_Web
 npm ci
 Copy-Item .env.example .env.local
 npm run dev -- --host 127.0.0.1 --port 5175
@@ -56,7 +56,7 @@ Open `http://127.0.0.1:5175/`. macOS and Linux users can replace `Copy-Item` wit
 
 ## Cesium ion token — start here
 
-Travel Atlas can start without a token by using its bundled low-resolution Natural Earth II fallback. For Cesium ion online global imagery:
+StarMap can start without a token by using its bundled low-resolution Natural Earth II fallback. For Cesium ion online global imagery:
 
 1. Sign in or create an account at [Cesium ion](https://ion.cesium.com/).
 2. Open [Access Tokens](https://ion.cesium.com/tokens) and create an app-specific public token.
@@ -68,13 +68,13 @@ Never commit a token or paste it into an AI chat, issue, screenshot, log, or REA
 
 If you want AI assistance, give your Agent this prompt:
 
-> Read `AGENTS.md`, `README.md`, and `01_Web/README.md`. Guide me through creating my own Cesium ion token before configuring Travel Atlas. Do not ask me to paste or reveal the token. Tell me exactly where I should enter it in `01_Web/.env.local`, verify only that the variable exists, and then start the local site. Preserve all ignored private data and media.
+> Read `AGENTS.md`, `README.md`, and `01_Web/README.md`. Guide me through creating my own Cesium ion token before configuring StarMap. Do not ask me to paste or reveal the token. Tell me exactly where I should enter it in `01_Web/.env.local`, verify only that the variable exists, and then start the local site. Preserve all ignored private data and media.
 
 ## Add your journeys and media
 
 Development mode includes local editing controls. Use them to add or reorder countries and cities, hide or restore items, choose photo covers, and import city or drone media. Production builds do not include these write controls.
 
-When drone files are selected, Travel Atlas immediately reads available EXIF/XMP metadata and displays it per file. Values found in the file are locked as file-derived facts. Only missing values become editable; a missing date must be supplied, while coordinates and altitude can be left blank.
+When drone files are selected, StarMap immediately reads available EXIF/XMP metadata and displays it per file. Values found in the file are locked as file-derived facts. Only missing values become editable; a missing date must be supplied, while coordinates and altitude can be left blank.
 
 For bulk media, place source files under `02_Assets/MediaInbox/` following its tracked template, then run:
 

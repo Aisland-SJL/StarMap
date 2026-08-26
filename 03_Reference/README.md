@@ -1,4 +1,4 @@
-# TravelAtlas References
+# StarMap References
 
 Use this directory for durable technical, deployment, imagery-provider, licensing, and open-source release notes.
 

@@ -18,7 +18,7 @@ export function AtlasHeader({ activePage, onPageChange }: AtlasHeaderProps) {
       data-active-page={activePage}
     >
       <h1 className="text-4xl font-semibold tracking-normal text-slate-950 sm:text-5xl">
-        Travel Atlas
+        StarMap
       </h1>
       <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-white sm:text-base">
         Map the places you have visited and turn every journey into a story you can revisit.

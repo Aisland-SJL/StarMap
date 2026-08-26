@@ -2,7 +2,7 @@
 
 ## 本地预览 / Dev Server
 
-TravelAtlas 是 Vite React 项目。
+StarMap 是 Vite React 项目。
 
 每次需要本地预览时，必须在项目根目录内启动：
 
@@ -38,7 +38,7 @@ npm run dev -- --host 127.0.0.1
 
 ## Cesium ion Token Boundary
 
-- A missing `VITE_CESIUM_ION_TOKEN` is a supported state: TravelAtlas must remain runnable with the bundled low-resolution Natural Earth II map.
+- A missing `VITE_CESIUM_ION_TOKEN` is a supported state: StarMap must remain runnable with the bundled low-resolution Natural Earth II map.
 - Online global imagery uses the token and quota of the person who develops or deploys that copy. Ordinary website visitors do not configure tokens; open-source users must never inherit the original author's token.
 - Never ask for, read, echo, screenshot, log, copy, or store a complete token. The user enters development values directly into ignored `.env.local` and production values directly into the hosting platform.
 - A Vite environment variable stays out of Git but is observable in the built browser application. Production safety comes from an app-specific token, `assets:read` only, required-asset selection, exact Allowed URLs, monitoring, and rotation.

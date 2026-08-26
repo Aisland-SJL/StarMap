@@ -1,4 +1,4 @@
-# TravelAtlas Verification
+# StarMap Verification
 
 ## Required Commands
 

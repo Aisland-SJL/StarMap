@@ -1,6 +1,6 @@
-# TravelAtlas Agent Rules
+# StarMap Agent Rules
 
-> Scope: the TravelAtlas repository root
+> Scope: the StarMap repository root
 
 ## Read First
 
@@ -11,7 +11,7 @@ If this repository is nested inside a larger workspace, read any parent `AGENTS.
 3. `01_Web/AGENTS.md`
 4. `TravelAtlas_Handoff.md` only when it exists in a private development workspace
 
-Missing MediaLab parent files are expected in a standalone clone and are not a blocker. Local TravelAtlas rules remain authoritative for product and media-import work.
+Missing MediaLab parent files are expected in a standalone clone and are not a blocker. Local StarMap rules remain authoritative for product and media-import work.
 
 ## Fast Task Routing
 
@@ -19,8 +19,8 @@ Missing MediaLab parent files are expected in a standalone clone and are not a b
 
 When a user asks about Cesium ion, tokens, missing online imagery, open-source setup, or deployment:
 
-1. Explain the two supported states first: no token keeps TravelAtlas runnable with bundled low-resolution Natural Earth II imagery; an ion token enables online global imagery and consumes the deploying account's quota.
-2. Distinguish roles. Ordinary visitors use the deployed site's configuration and do not obtain a token. Every person who clones and deploys TravelAtlas supplies an app-specific token from their own ion account; never reuse or distribute the original author's token.
+1. Explain the two supported states first: no token keeps StarMap runnable with bundled low-resolution Natural Earth II imagery; an ion token enables online global imagery and consumes the deploying account's quota.
+2. Distinguish roles. Ordinary visitors use the deployed site's configuration and do not obtain a token. Every person who clones and deploys StarMap supplies an app-specific token from their own ion account; never reuse or distribute the original author's token.
 3. Never ask the user to paste a complete token into chat, and never read, echo, screenshot, log, copy, or store its value. Guide the user to enter it directly into ignored `01_Web/.env.local` for development or the hosting platform's environment settings for production.
 4. Treat `VITE_CESIUM_ION_TOKEN` as a public-client credential: keeping it out of Git prevents repository disclosure, but a built static website necessarily exposes it to browser requests. Do not describe a Vite environment variable as a server-side secret.
 5. Recommend separate development and production tokens from the same account. Explain that they share one account quota; separation exists for different Allowed URLs, per-token usage attribution, independent rotation, and limited revocation impact.

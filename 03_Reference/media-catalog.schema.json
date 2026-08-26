@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://travelatlas.local/schemas/media-catalog.schema.json",
-  "title": "TravelAtlas Local Media Catalog",
+  "title": "StarMap Local Media Catalog",
   "type": "object",
   "required": ["schemaVersion", "generatedAt", "privacyLevel", "items"],
   "properties": {

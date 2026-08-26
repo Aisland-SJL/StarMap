@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://travelatlas.local/schemas/travel-map.schema.json",
-  "title": "TravelAtlas Journey Data",
+  "title": "StarMap Journey Data",
   "type": "object",
   "required": ["schema_version", "generated_at", "privacy_level", "records"],
   "properties": {

@@ -40,7 +40,7 @@ export function ReleaseUpdatePage({ state }: ReleaseUpdatePageProps) {
           : state.message || '等待检查版本状态'
 
   const announcement = state.release?.body?.trim()
-    || `Travel Atlas v${state.currentVersion}\n\n当前公共版包含 Map、Journey 与版本更新中心；默认中文，支持本地数据与媒体边界，并恢复了单次点击召唤的 3 秒高密度流星雨。`
+    || `StarMap v${state.currentVersion}\n\n当前公共版包含 Map、Journey 与版本更新中心；默认中文，支持本地数据与媒体边界，并恢复了单次点击召唤的 3 秒高密度流星雨。`
 
   return (
     <div className="atlas-update-scroll selector-scrollbar h-full overflow-y-auto overscroll-contain">
@@ -49,7 +49,7 @@ export function ReleaseUpdatePage({ state }: ReleaseUpdatePageProps) {
           <div>
             <p className="journey-kicker">Release center</p>
             <h2>版本更新</h2>
-            <p>在不覆盖私人数据和本地修改的前提下，了解并完成 Travel Atlas 更新。</p>
+            <p>在不覆盖私人数据和本地修改的前提下，了解并完成 StarMap 更新。</p>
           </div>
           <div className="update-status-card" data-status={state.status}>
             <span className="update-status-light" aria-hidden="true" />
