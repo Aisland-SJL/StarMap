@@ -5406,6 +5406,10 @@ button {
     box-shadow 180ms ease;
 }
 
+.atlas-sidebars-toggle.atlas-dock-button {
+  height: 48px;
+}
+
 .atlas-dock-button:hover,
 .atlas-sidebars-toggle.atlas-dock-button:hover {
   border-color: transparent;

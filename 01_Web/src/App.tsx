@@ -66,6 +66,7 @@ function App() {
   const [globeDistance, setGlobeDistance] = useState(overviewDistance)
   const [globeResetVersion, setGlobeResetVersion] = useState(0)
   const [activePage, setActivePage] = useState<AtlasPage>('map')
+  const [pageBeforeUpdate, setPageBeforeUpdate] = useState<Exclude<AtlasPage, 'about'>>('map')
   const [imageryTuningByTheme, setImageryTuningByTheme] = useState(imageryTuningDefaults)
   const [journeyViewMode, setJourneyViewMode] = useState<JourneyViewMode>('timeline')
   const [activeDroneMediaCityId, setActiveDroneMediaCityId] = useState<CityId>()
@@ -103,6 +104,24 @@ function App() {
       ...current,
       [activeTheme]: { ...imageryTuningDefaults[activeTheme] },
     }))
+  }
+
+  const changePrimaryPage = (page: AtlasPage) => {
+    if (page !== 'about') {
+      setPageBeforeUpdate(page)
+    }
+    setActivePage(page)
+  }
+
+  const toggleUpdatePage = () => {
+    if (activePage === 'about') {
+      setActivePage(pageBeforeUpdate)
+      return
+    }
+
+    releaseUpdates.markSeen()
+    setPageBeforeUpdate(activePage)
+    setActivePage('about')
   }
 
   useEffect(() => {
@@ -260,7 +279,7 @@ function App() {
       <div className="app-background fixed inset-0 -z-10" />
       <div className="app-grid fixed inset-0 -z-10" />
       <div className="star-field fixed inset-0 -z-10" />
-      <AtlasHeader activePage={activePage} onPageChange={setActivePage} />
+      <AtlasHeader activePage={activePage} onPageChange={changePrimaryPage} />
       <section
         className="atlas-experience cesium-lab-page relative h-[100dvh] w-screen overflow-hidden"
         data-page={activePage}
@@ -339,40 +358,38 @@ function App() {
                 <MouseControlGuide language="zh" />
               </div>
 
-              <div className="atlas-map-controls">
-                <button
-                  type="button"
-                  className="atlas-dock-button atlas-sidebars-toggle pointer-events-auto"
-                  aria-pressed={sidebarsOpen}
-                  aria-label={sidebarsOpen ? 'Hide both sidebars' : 'Show both sidebars'}
-                  title={sidebarsOpen ? '隐藏侧边栏' : '显示侧边栏'}
-                  onClick={() => setSidebarsOpen((open) => !open)}
-                >
-                  <span className="atlas-sidebars-toggle-icons" aria-hidden="true">
-                    {sidebarsOpen ? (
-                      <>
-                        <PanelLeftClose />
-                        <PanelRightClose />
-                      </>
-                    ) : (
-                      <>
-                        <PanelLeftOpen />
-                        <PanelRightOpen />
-                      </>
-                    )}
-                  </span>
-                </button>
-                <MeteorShowerButton />
-                <ReleaseUpdateButton
-                  active={activePage === 'about'}
-                  state={releaseUpdates}
-                  onOpen={() => {
-                    releaseUpdates.markSeen()
-                    setActivePage('about')
-                  }}
-                />
-              </div>
             </div>
+          </div>
+
+          <div className="atlas-map-controls">
+            <button
+              type="button"
+              className="atlas-dock-button atlas-sidebars-toggle pointer-events-auto"
+              aria-pressed={sidebarsOpen}
+              aria-label={sidebarsOpen ? 'Hide both sidebars' : 'Show both sidebars'}
+              title={sidebarsOpen ? '隐藏侧边栏' : '显示侧边栏'}
+              onClick={() => setSidebarsOpen((open) => !open)}
+            >
+              <span className="atlas-sidebars-toggle-icons" aria-hidden="true">
+                {sidebarsOpen ? (
+                  <>
+                    <PanelLeftClose />
+                    <PanelRightClose />
+                  </>
+                ) : (
+                  <>
+                    <PanelLeftOpen />
+                    <PanelRightOpen />
+                  </>
+                )}
+              </span>
+            </button>
+            <MeteorShowerButton />
+            <ReleaseUpdateButton
+              active={activePage === 'about'}
+              state={releaseUpdates}
+              onToggle={toggleUpdatePage}
+            />
           </div>
 
           <div

@@ -4,19 +4,19 @@ import type { ReleaseUpdateState } from '../data/releaseUpdates'
 type ReleaseUpdateButtonProps = {
   active: boolean
   state: ReleaseUpdateState
-  onOpen: () => void
+  onToggle: () => void
 }
 
-export function ReleaseUpdateButton({ active, state, onOpen }: ReleaseUpdateButtonProps) {
+export function ReleaseUpdateButton({ active, state, onToggle }: ReleaseUpdateButtonProps) {
   return (
     <button
       type="button"
       className="atlas-dock-button atlas-release-button pointer-events-auto"
-      aria-label="版本更新"
+      aria-label={active ? '返回上一界面' : '版本更新'}
       aria-current={active ? 'page' : undefined}
-      title={state.hasUnseenUpdate ? '发现新版本，查看更新' : '版本更新'}
+      title={active ? '返回上一界面' : state.hasUnseenUpdate ? '发现新版本，查看更新' : '版本更新'}
       data-update-available={state.hasUnseenUpdate ? 'true' : 'false'}
-      onClick={onOpen}
+      onClick={onToggle}
     >
       <RefreshCw aria-hidden="true" className={state.status === 'checking' ? 'is-spinning' : ''} />
       {state.hasUnseenUpdate ? <span className="atlas-release-signal" aria-hidden="true" /> : null}
