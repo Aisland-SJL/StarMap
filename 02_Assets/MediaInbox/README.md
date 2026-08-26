@@ -34,8 +34,8 @@ Country and city folder names must match the active private `01_Web/src/data/gen
 
 ## Agent Workflow
 
-1. Read the project media-import route in `AGENTS.md`, then read the full [[TravelAtlas_media_import_protocol]].
-2. Confirm that every file has a reliable existing country and city. For drone media, also confirm the media type and the metadata required for the requested display.
+1. Read the project media-import route in `AGENTS.md`, then read the full [media import protocol](../../03_Reference/TravelAtlas_media_import_protocol.md).
+2. Confirm that every file has a reliable existing country and city. For drone media, read embedded metadata first and confirm the media type, date, and resolution. Coordinates and altitude improve map behavior but are optional.
 3. If any country, city, media type, date, coordinate, privacy status, or intended use is missing or uncertain, ask the smallest necessary question and stop. Without a reliable answer, do not guess, copy, convert, catalog, or import that item.
 4. From `01_Web/`, run `npm run media:check`. Any `需要处理` result or warning caused by unresolved required data blocks the import, even if the command exits successfully.
 5. Only after a clean preflight, run `npm run media:import`. The importer creates hash-stable `thumb`, `preview`, and `original` tiers outside the Inbox; restart the preview and verify City Info, City Cards/Photos, Drone Media, and the 360 Viewer as applicable.
@@ -55,7 +55,7 @@ These JSON files are metadata, not media derivatives. Converted, resized, optimi
 - Automated import supports JPEG, PNG, WebP, AVIF, MP4, and WebM.
 - Supported still formats are automatically oriented and optimized into a `640 px` WebP thumbnail plus a `2400 px` WebP viewer preview while retaining the original tier. HEIC, HEIF, TIFF, RAW, and MOV are not converted by the current importer; leave them unchanged, explain the limitation, and ask before separate conversion work.
 - Ordinary city photos need no extra metadata. A filename beginning with `cover` becomes the preferred City Info image.
-- Drone items need a reliable kind, date, resolution, and valid geographic position before they become active Drone Media. The Agent may read EXIF/XMP and write the sidecar, but must ask rather than invent missing values.
+- Drone items need a reliable kind, date, and resolution before they become active Drone Media. The Agent must read EXIF/XMP first and may write the sidecar for missing facts, but must ask rather than invent them. Geographic position and altitude are optional: an item without coordinates can appear in Drone Media but does not create a map marker or camera target.
 - Unknown countries, unknown cities, unresolved files, or media placed outside `photos/` and `drone/` must remain unimported.
 
 ## Privacy Boundary
@@ -67,11 +67,10 @@ These JSON files are metadata, not media derivatives. Converted, resized, optimi
 
 Never place credentials, tickets, identity documents, hotel addresses, booking references, or private family material in the Inbox. Never add private Inbox files, generated user media, or local catalogs to Git.
 
-## Structure Links
+## Documentation
 
-- Project entry: [[TravelAtlas_README]]
-- Project index: [[00_TravelAtlas_index]]
-- Project rules: [[ProductionLab/04_Project/TravelAtlas/AGENTS|TravelAtlas Agent Rules]]
-- Assets boundary: [[ProductionLab/04_Project/TravelAtlas/02_Assets/README|Assets README]]
-- Full Agent protocol: [[TravelAtlas_media_import_protocol]]
-- Open-source privacy boundary: [[TravelAtlas_open_source_privacy_boundary]]
+- Public guide: [`../../README.md`](../../README.md)
+- Project rules: [`../../AGENTS.md`](../../AGENTS.md)
+- Assets boundary: [`../README.md`](../README.md)
+- Full Agent protocol: [`../../03_Reference/TravelAtlas_media_import_protocol.md`](../../03_Reference/TravelAtlas_media_import_protocol.md)
+- Open-source privacy boundary: [`../../03_Reference/TravelAtlas_open_source_privacy_boundary.md`](../../03_Reference/TravelAtlas_open_source_privacy_boundary.md)

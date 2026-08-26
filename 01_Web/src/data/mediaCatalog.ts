@@ -1,4 +1,5 @@
 import type { CityId, CountryId } from '../types/travel'
+import { orderBySavedIds, travelAtlasEditorState } from './editorState'
 
 export type ImportedMediaKind = 'photo' | 'panorama360' | 'aerialPhoto' | 'video'
 
@@ -31,6 +32,8 @@ export type ImportedMediaCatalogItem = {
   resolution?: string
   captureType?: string
   description?: string
+  altitudeMeters?: number
+  relativeAltitudeMeters?: number
   position?: {
     lat: number
     lng: number
@@ -61,27 +64,44 @@ export const getMediaSource = (
   variant: 'thumb' | 'preview' | 'original',
 ) => item.variants?.[variant]?.src ?? item.variants?.original.src ?? item.src
 
-export const importedMediaItems = Object.values(localCatalogModules)
+export const allImportedMediaItems = Object.values(localCatalogModules)
   .filter(isCatalog)
   .flatMap((catalog) => catalog.items)
 
+const hiddenMediaIds = new Set([
+  ...travelAtlasEditorState.hiddenMediaIds,
+  ...travelAtlasEditorState.hiddenDroneMediaIds,
+])
+
+export const importedMediaItems = allImportedMediaItems.filter((item) => !hiddenMediaIds.has(item.id))
+
 export const getCityPhotos = (cityId?: CityId) =>
   cityId
-    ? importedMediaItems.filter((item) => item.kind === 'photo' && item.cityId === cityId && item.status === 'ready')
+    ? orderBySavedIds(
+        importedMediaItems.filter((item) => item.kind === 'photo' && item.cityId === cityId && item.status === 'ready'),
+        travelAtlasEditorState.mediaOrderByCity[cityId],
+      )
     : []
 
 export const getCityCoverPhoto = (cityId?: CityId) => {
   const cityPhotos = getCityPhotos(cityId)
-  return cityPhotos.find((item) => item.isCover) ?? cityPhotos[0]
+  const savedCoverId = cityId ? travelAtlasEditorState.coverMediaByCity[cityId] : undefined
+  return cityPhotos.find((item) => item.id === savedCoverId)
+    ?? cityPhotos.find((item) => item.isCover)
+    ?? cityPhotos[0]
 }
 
-export const importedDroneMediaCatalogItems = importedMediaItems.filter(
-  (item) => (
+export const importedDroneMediaCatalogItems = Object.entries(
+  importedMediaItems.filter(
+    (item) => (
     (item.kind === 'panorama360' || item.kind === 'aerialPhoto')
     && item.status === 'ready'
     && Boolean(item.cityId)
     && Boolean(item.date)
     && Boolean(item.resolution)
-    && Boolean(item.position)
-  ),
-)
+    ),
+  ).reduce((byCity, item) => {
+    byCity[item.cityId] = [...(byCity[item.cityId] ?? []), item]
+    return byCity
+  }, {} as Record<CityId, ImportedMediaCatalogItem[]>),
+).flatMap(([cityId, items]) => orderBySavedIds(items, travelAtlasEditorState.droneOrderByCity[cityId]))

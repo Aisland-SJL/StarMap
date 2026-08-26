@@ -18,7 +18,9 @@ export type DroneMediaItem = {
   city: string
   country: string
   description?: string
-  position: {
+  altitudeMeters?: number
+  relativeAltitudeMeters?: number
+  position?: {
     lat: number
     lng: number
     altitudeMeters?: number
@@ -31,7 +33,6 @@ const importedDroneMediaItems: DroneMediaItem[] = importedDroneMediaCatalogItems
     || !item.cityId
     || !item.date
     || !item.resolution
-    || !item.position
   ) return []
 
   return [{
@@ -49,6 +50,8 @@ const importedDroneMediaItems: DroneMediaItem[] = importedDroneMediaCatalogItems
     city: item.cityName ?? item.cityId,
     country: item.countryName,
     description: item.description,
+    altitudeMeters: item.altitudeMeters ?? item.position?.altitudeMeters,
+    relativeAltitudeMeters: item.relativeAltitudeMeters,
     position: item.position,
   }]
 })

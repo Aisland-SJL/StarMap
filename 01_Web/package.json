@@ -1,7 +1,7 @@
 {
   "name": "travelatlas",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,13 +16,16 @@
     "@photo-sphere-viewer/core": "^5.14.1",
     "@tailwindcss/vite": "^4.3.0",
     "cesium": "^1.142.0",
+    "exifr": "^7.1.3",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-globe.gl": "^2.38.0",
     "resium": "^1.23.0",
     "tailwindcss": "^4.3.0",
-    "three": "^0.184.0"
+    "three": "^0.184.0",
+    "undici": "^8.10.0",
+    "world-countries": "^5.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

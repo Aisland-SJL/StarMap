@@ -17,6 +17,7 @@ import {
   buildModuleUrl,
 } from 'cesium'
 import { useCesium } from 'resium'
+import { consumeMeteorShower } from '../data/meteorShower'
 
 type StarDefinition = {
   longitude: number
@@ -468,7 +469,8 @@ export function CesiumConstellationSky({
       })
     })
 
-    const meteorSlots = Array.from({ length: 2 }, () => {
+    // 原版流星雨使用 34 个槽位：日常最多少量同屏，3 秒召唤窗口可拉满密度。
+    const meteorSlots = Array.from({ length: 34 }, () => {
       const trailMaterials = Array.from(
         { length: meteorTrailSegmentCount },
         (_, segmentIndex) => Material.fromType('Color', {
@@ -528,15 +530,39 @@ export function CesiumConstellationSky({
       meteorSeed = (meteorSeed * 1_664_525 + 1_013_904_223) >>> 0
       return meteorSeed / 4_294_967_296
     }
+    // 原版 24 条轨道，覆盖中央、左右与地球上方的完整天空区域。
     const meteorTracks = [
       { down: 0.82, right: 0.3, startRight: -0.56, startUp: 0.75 },
       { down: 1.0, right: 0.36, startRight: -0.32, startUp: 0.82 },
       { down: 0.84, right: 0.3, startRight: -0.05, startUp: 0.7 },
       { down: 0.95, right: 0.28, startRight: 0.18, startUp: 0.78 },
       { down: 0.78, right: 0.24, startRight: 0.38, startUp: 0.62 },
+      { down: 0.9, right: 0.32, startRight: -0.68, startUp: 0.88 },
+      { down: 0.86, right: 0.26, startRight: -0.6, startUp: 0.52 },
+      { down: 0.98, right: 0.34, startRight: 0.02, startUp: 0.92 },
+      { down: 0.8, right: 0.28, startRight: 0.52, startUp: 0.72 },
+      { down: 0.92, right: 0.3, startRight: 0.58, startUp: 0.58 },
+      { down: 0.88, right: 0.31, startRight: -0.74, startUp: 0.64 },
+      { down: 0.94, right: 0.27, startRight: -0.42, startUp: 0.96 },
+      { down: 0.76, right: 0.3, startRight: 0.34, startUp: 0.86 },
+      { down: 0.9, right: 0.29, startRight: 0.7, startUp: 0.66 },
+      { down: 0.96, right: 0.33, startRight: -0.82, startUp: 0.8 },
+      { down: 0.82, right: 0.28, startRight: 0.62, startUp: 0.5 },
+      { down: 0.84, right: 0.3, startRight: -0.9, startUp: 0.42 },
+      { down: 0.9, right: 0.32, startRight: -0.14, startUp: 1.0 },
+      { down: 0.78, right: 0.26, startRight: 0.8, startUp: 0.78 },
+      { down: 0.86, right: 0.29, startRight: 0.46, startUp: 0.4 },
+      { down: 0.92, right: 0.31, startRight: -0.98, startUp: 0.7 },
+      { down: 0.8, right: 0.27, startRight: -0.26, startUp: 0.34 },
+      { down: 0.88, right: 0.33, startRight: 0.9, startUp: 0.9 },
+      { down: 0.76, right: 0.28, startRight: 0.28, startUp: 0.26 },
     ]
     let previousMeteorTrack = -1
     let nextMeteorAt = reduceMotion ? Number.POSITIVE_INFINITY : 1.8 + meteorRandom() * 1.6
+    // 按钮触发：保持单颗速度不变，在 3 秒内提高发射数量。
+    let showerActive = false
+    let showerEndAt = 0
+    let nextShowerSpawnAt = 0
 
     const cameraRelativeDirection = (rightOffset: number, upOffset: number) => (
       Cartesian3.normalize(
@@ -811,11 +837,11 @@ export function CesiumConstellationSky({
       const visualScale = 0.88 + meteorRandom() * 0.24
       meteor.startedAt = elapsedSeconds
       meteor.duration = Math.min(2.8, Math.max(1.55, pathSpan / (0.43 + meteorRandom() * 0.05)))
-      meteor.tailLength = Math.min(0.16, Math.max(0.085, 0.12 / pathSpan))
+      meteor.tailLength = Math.min(0.27, Math.max(0.12, 0.19 / pathSpan))
       meteor.headGlow.pixelSize = 11 * visualScale
       meteor.headCore.pixelSize = 4.6 * visualScale
       meteor.trailSegments.forEach((segment, segmentIndex) => {
-        segment.width = (0.7 + ((segmentIndex + 1) / meteorTrailSegmentCount) * 2.1) * visualScale
+        segment.width = (0.85 + ((segmentIndex + 1) / meteorTrailSegmentCount) * 2.45) * visualScale
       })
       meteor.active = true
       previousMeteorTrack = trackIndex
@@ -829,7 +855,28 @@ export function CesiumConstellationSky({
     const updateMeteor = (elapsedSeconds: number) => {
       if (reduceMotion) return
 
-      if (elapsedSeconds >= nextMeteorAt) {
+      if (!showerActive && consumeMeteorShower()) {
+        showerActive = true
+        showerEndAt = elapsedSeconds + 3
+        nextShowerSpawnAt = elapsedSeconds
+      }
+
+      if (showerActive) {
+        if (elapsedSeconds >= showerEndAt) {
+          showerActive = false
+          nextMeteorAt = elapsedSeconds + 1.8 + meteorRandom() * 1.6
+        } else {
+          while (elapsedSeconds >= nextShowerSpawnAt) {
+            const showerMeteor = meteorSlots.find((meteor) => !meteor.active)
+            if (!showerMeteor) {
+              nextShowerSpawnAt = elapsedSeconds + 0.06
+              break
+            }
+            beginMeteor(showerMeteor, elapsedSeconds)
+            nextShowerSpawnAt = elapsedSeconds + 0.015 + meteorRandom() * 0.025
+          }
+        }
+      } else if (elapsedSeconds >= nextMeteorAt) {
         const availableMeteor = meteorSlots.find((meteor) => !meteor.active)
         if (availableMeteor) {
           beginMeteor(availableMeteor, elapsedSeconds)
@@ -861,7 +908,7 @@ export function CesiumConstellationSky({
         )
 
         meteor.headGlow.position = headPosition
-        meteor.headGlow.color = Color.fromCssColorString('#67e8f9').withAlpha(0.16 * fade)
+        meteor.headGlow.color = Color.fromCssColorString('#67e8f9').withAlpha(0.27 * fade)
         meteor.headGlow.outlineColor = Color.fromCssColorString('#e0f2fe').withAlpha(0.2 * fade)
         meteor.headGlow.show = true
         meteor.headCore.position = headPosition
@@ -893,7 +940,7 @@ export function CesiumConstellationSky({
             Math.min(1, segmentEnd),
             new Cartesian3(),
           )
-          const trailAlpha = fade * (0.035 + Math.pow(segmentStrength, 2.15) * 0.7)
+          const trailAlpha = fade * (0.068 + Math.pow(segmentStrength, 2.15) * 0.95)
 
           segment.positions = [startPosition, endPosition]
           meteor.trailMaterials[segmentIndex].uniforms.color = Color.fromCssColorString(

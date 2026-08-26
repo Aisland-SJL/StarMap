@@ -1,20 +1,15 @@
 # TravelAtlas Agent Rules
 
-> Scope: `E:\AI_Workspace\MediaLab\ProductionLab\04_Project\TravelAtlas`
+> Scope: the TravelAtlas repository root
 
 ## Read First
 
-In the owner's MediaLab workspace, read the two parent rules first when they exist:
+If this repository is nested inside a larger workspace, read any parent `AGENTS.md` files first. In every workspace, including a standalone open-source clone, continue with the local files in this order:
 
-1. `E:\AI_Workspace\MediaLab\AGENTS.md`
-2. `E:\AI_Workspace\MediaLab\ProductionLab\AGENTS.md`
-
-In every workspace, including a standalone open-source clone, always continue with the local files in this order:
-
-1. `TravelAtlas_README.md`
-2. `TravelAtlas_Handoff.md` when present
-3. `00_Index/00_TravelAtlas_index.md` when present
-4. `01_Web/AGENTS.md`
+1. `README.md` or `README.zh.md`
+2. `01_Web/README.md`
+3. `01_Web/AGENTS.md`
+4. `TravelAtlas_Handoff.md` only when it exists in a private development workspace
 
 Missing MediaLab parent files are expected in a standalone clone and are not a blocker. Local TravelAtlas rules remain authoritative for product and media-import work.
 
@@ -45,7 +40,6 @@ When a user mentions uploading, importing, organizing, or adding travel photos o
 ## Project Boundary
 
 - This folder is the unique active home of TravelAtlas.
-- The previous workspace at `E:\AI_Workspace\TravelAtlas` is a short-term rollback backup. Do not modify it unless the user explicitly asks.
 - The runnable application lives in `01_Web/`; run all npm commands from that directory.
 - Git is rooted at this project folder so code, project documentation, tests, and process records share one history.
 - Do not create a second active TravelAtlas copy.
@@ -59,11 +53,11 @@ When a user mentions uploading, importing, organizing, or adding travel photos o
 
 ## Working Method
 
-1. Read the current Handoff and choose one bounded task.
+1. Read the current README and, when present, the private workspace Handoff; choose one bounded task.
 2. Inspect only relevant files; do not recursively scan `node_modules`, `dist`, `.git`, or large media folders.
 3. Make surgical changes and verify them with `npm run lint` and `npm run build` from `01_Web/`.
 4. Keep visual checks focused. Do not leave unbounded browser, terminal, or watcher sessions running.
-5. Update `TravelAtlas_Handoff.md` after substantive work.
+5. In a private workspace that contains `TravelAtlas_Handoff.md`, update it after substantive work. Do not create one in a clean public clone unless the user asks.
 
 ## Local Preview
 
@@ -74,6 +68,10 @@ npm run dev -- --host 127.0.0.1 --port 5174
 ```
 
 - Do not use a Node API wrapper to start Vite.
+- The local editor is implemented as a Vite `serve`-only plugin, not a separate wrapper or product. Keep the terminology **local editing state** and **public display state**; do not describe them as two versions.
+- Deterministic edits must write directly through the loopback-only local editor with validation, backup, and atomic replacement. Do not reintroduce chat-command or AI-command relays for sorting, hiding, covers, uploads, or form saves.
+- Public builds must render no editor controls and expose no write API. Never rely on CSS-hiding a control as the security boundary.
+- Media added from the local editor must enter `02_Assets/MediaInbox/` first and then use the existing check/import pipeline. Never write uploads directly into `public/media/user/` or generated catalogs.
 - Do not use `--host 0.0.0.0` unless explicitly requested.
 - Check whether a port is already occupied before starting another server.
 - Do not stop or interfere with servers belonging to other projects.
@@ -92,9 +90,10 @@ npm run dev -- --host 127.0.0.1 --port 5174
 - Do not push without explicit approval.
 - Keep generated output, local review screenshots, dependencies, and environment files out of Git.
 
-## Structure Links
+## Documentation
 
-- Project entry: [[TravelAtlas_README]]
-- Project index: [[00_TravelAtlas_index]]
-- Project handoff: [[TravelAtlas_Handoff]]
-- ProductionLab projects: [[ProductionLab_project_index]]
+- Public guide: [`README.md`](README.md)
+- Chinese guide: [`README.zh.md`](README.zh.md)
+- Web workspace: [`01_Web/README.md`](01_Web/README.md)
+- Media workflow: [`02_Assets/MediaInbox/README.md`](02_Assets/MediaInbox/README.md)
+- Privacy boundary: [`03_Reference/TravelAtlas_open_source_privacy_boundary.md`](03_Reference/TravelAtlas_open_source_privacy_boundary.md)

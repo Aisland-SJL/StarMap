@@ -6,7 +6,7 @@
   "required": ["schemaVersion", "generatedAt", "privacyLevel", "items"],
   "properties": {
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "generatedAt": {
       "type": "string",
@@ -79,6 +79,8 @@
         "resolution": { "type": "string" },
         "captureType": { "type": "string" },
         "description": { "type": "string" },
+        "altitudeMeters": { "type": "number" },
+        "relativeAltitudeMeters": { "type": "number" },
         "position": { "$ref": "#/$defs/position" },
         "isCover": { "type": "boolean" },
         "status": {

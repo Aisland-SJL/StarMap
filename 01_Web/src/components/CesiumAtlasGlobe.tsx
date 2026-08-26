@@ -159,7 +159,13 @@ const cityMarkerHeight = 600
 const cityPosition = (lng: number, lat: number) =>
   Cartesian3.fromDegrees(lng, lat, cityMarkerHeight)
 
-const droneMediaPosition = (item: DroneMediaItem) =>
+type PositionedDroneMediaItem = DroneMediaItem & {
+  position: NonNullable<DroneMediaItem['position']>
+}
+
+const hasDronePosition = (item: DroneMediaItem): item is PositionedDroneMediaItem => Boolean(item.position)
+
+const droneMediaPosition = (item: PositionedDroneMediaItem) =>
   Cartesian3.fromDegrees(
     item.position.lng,
     item.position.lat,
@@ -226,11 +232,13 @@ const cityHoverMarkerImage = (accent: string, corePixelSize: number) => {
 
 type CameraScale = 'world' | 'country' | 'city' | 'droneGroup' | 'drone'
 
+const maximumZoomDistance = 22_000_000
+
 const cameraScaleStates: Record<
   CameraScale,
   { rangeOrHeight: number; pitch: number; duration: number }
 > = {
-  world: { rangeOrHeight: 16_500_000, pitch: -90, duration: 1.2 },
+  world: { rangeOrHeight: maximumZoomDistance, pitch: -90, duration: 1.2 },
   country: { rangeOrHeight: 3_100_000, pitch: -62, duration: 1.3 },
   city: { rangeOrHeight: 680_000, pitch: -48, duration: 1.35 },
   droneGroup: { rangeOrHeight: 20_000, pitch: -42, duration: 1.15 },
@@ -293,7 +301,7 @@ const configureViewer = (viewer: CesiumViewer) => {
     maxCesiumDevicePixelRatio / devicePixelRatio,
   )
   viewer.scene.screenSpaceCameraController.minimumZoomDistance = 120
-  viewer.scene.screenSpaceCameraController.maximumZoomDistance = 22_000_000
+  viewer.scene.screenSpaceCameraController.maximumZoomDistance = maximumZoomDistance
   viewer.scene.globe.depthTestAgainstTerrain = true
   viewer.scene.minimumDisableDepthTestDistance = 0
   viewer.camera.percentageChanged = 0.01
@@ -354,8 +362,8 @@ const debugCameraBlockedByDroneLock = (details: Record<string, unknown>) => {
 }
 
 type CameraFocus =
-  | { type: 'droneItem'; id: string; item: DroneMediaItem }
-  | { type: 'droneGroup'; id?: CityId; items: DroneMediaItem[] }
+  | { type: 'droneItem'; id: string; item: PositionedDroneMediaItem }
+  | { type: 'droneGroup'; id?: CityId; items: PositionedDroneMediaItem[] }
   | { type: 'city'; id?: CityId; lat: number; lng: number }
   | { type: 'country'; id?: CountryId; lat: number; lng: number }
   | { type: 'overview'; id: 'overview'; lat: number; lng: number }
@@ -432,10 +440,10 @@ const installDebugCameraApi = (
   const flyToDroneItem = (itemId: string, testHeight: number) => {
     const item = droneMediaById[itemId]
 
-    if (!item) {
+    if (!item || !hasDronePosition(item)) {
       console.warn('[debug-direct-drone-camera-command]', JSON.stringify({
         itemId,
-        error: 'Drone media item not found',
+        error: item ? 'Drone media item has no coordinates' : 'Drone media item not found',
         time: Date.now(),
       }))
       return
@@ -904,12 +912,17 @@ export function CesiumAtlasGlobe({
   const activeDroneMediaItems = useMemo(
     () =>
       activeDroneMediaCityId
-        ? droneMediaItems.filter((item) => item.cityId === activeDroneMediaCityId)
+        ? droneMediaItems.filter((item): item is PositionedDroneMediaItem => (
+            item.cityId === activeDroneMediaCityId && hasDronePosition(item)
+          ))
         : [],
     [activeDroneMediaCityId],
   )
-  const selectedDroneMediaItem = activeDroneMediaItemId
+  const selectedDroneMediaCandidate = activeDroneMediaItemId
     ? droneMediaById[activeDroneMediaItemId]
+    : undefined
+  const selectedDroneMediaItem = selectedDroneMediaCandidate && hasDronePosition(selectedDroneMediaCandidate)
+    ? selectedDroneMediaCandidate
     : undefined
   const cameraFocus = useMemo<CameraFocus>(() => {
     if (selectedDroneMediaItem) {

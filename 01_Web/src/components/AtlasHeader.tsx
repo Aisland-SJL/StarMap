@@ -8,21 +8,20 @@ type AtlasHeaderProps = {
 const navItems: { id: AtlasPage; label: string }[] = [
   { id: 'map', label: 'Map' },
   { id: 'journey', label: 'Journey' },
-  { id: 'about', label: 'About' },
 ]
 
 export function AtlasHeader({ activePage, onPageChange }: AtlasHeaderProps) {
   return (
     <header
       className="atlas-app-header cesium-lab-title hero-glass-layer absolute left-[50vw] top-4 z-50 w-[min(760px,calc(100vw-32px))] -translate-x-1/2 px-6 py-4 text-center sm:px-8"
-      data-page={activePage === 'about' ? 'about' : 'map'}
+      data-page="map"
       data-active-page={activePage}
     >
       <h1 className="text-4xl font-semibold tracking-normal text-slate-950 sm:text-5xl">
-        Beyond Coordinates
+        Travel Atlas
       </h1>
       <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-white sm:text-base">
-        From place to place, through time and space, our story unfolds at its own pace.
+        Map the places you have visited and turn every journey into a story you can revisit.
       </p>
       <nav
         className="atlas-tabs mx-auto mt-4 inline-flex items-center gap-1 rounded-full border border-white/70 bg-white/50 p-1 text-sm font-medium text-slate-500 shadow-sm backdrop-blur-xl"

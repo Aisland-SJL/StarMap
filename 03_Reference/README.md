@@ -8,15 +8,13 @@ Current implementation dependencies include Cesium, Resium, React, Vite, Tailwin
 
 | File | Purpose |
 | --- | --- |
-| [[TravelAtlas_media_import_protocol]] | Rule priority, stop conditions, user folder convention, Agent workflow, privacy boundary, and display rules |
+| [Media import protocol](TravelAtlas_media_import_protocol.md) | Rule priority, stop conditions, user folder convention, Agent workflow, privacy boundary, and display rules |
 | `media-catalog.schema.json` | Machine-readable schema for the generated local media catalog |
-| [[TravelAtlas_open_source_privacy_boundary]] | Public template, local data overlay, clean-repository, and deployment boundary |
+| [Open-source privacy boundary](TravelAtlas_open_source_privacy_boundary.md) | Public template, local data overlay, clean-repository, and deployment boundary |
 | `travel-map.schema.json` | Machine-readable schema shared by public sample and private travel data |
 
-## Structure Links
+## Documentation
 
-- Project entry: [[TravelAtlas_README]]
-- Project index: [[00_TravelAtlas_index]]
-- Migration audit: [[2026-08-09_migration_and_performance_audit]]
-- Media import protocol: [[TravelAtlas_media_import_protocol]]
-- Open-source privacy boundary: [[TravelAtlas_open_source_privacy_boundary]]
+- Public guide: [`../README.md`](../README.md)
+- Media import protocol: [`TravelAtlas_media_import_protocol.md`](TravelAtlas_media_import_protocol.md)
+- Open-source privacy boundary: [`TravelAtlas_open_source_privacy_boundary.md`](TravelAtlas_open_source_privacy_boundary.md)

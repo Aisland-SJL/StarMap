@@ -4,21 +4,22 @@ import { AtlasHeader } from './components/AtlasHeader'
 import type { AtlasPage } from './components/AtlasHeader'
 import { CesiumAtlasGlobe } from './components/CesiumAtlasGlobe'
 import { CountrySelector } from './components/CountrySelector'
-import { DayNightToggle } from './components/DayNightToggle'
 import type { ThemeMode } from './components/DayNightToggle'
-import { LanguageToggle } from './components/LanguageToggle'
-import type { InterfaceLanguage } from './components/LanguageToggle'
+import { MeteorShowerButton } from './components/MeteorShowerButton'
 import { MouseControlGuide } from './components/MouseControlGuide'
 import { DroneMediaCard } from './components/DroneMediaCard'
 import { InfoCard } from './components/InfoCard'
 import { CityPhotoGalleryModal } from './components/CityPhotoGalleryModal'
 import type { CityPhotoGalleryRequest } from './components/CityPhotoGalleryModal'
 import { Timeline } from './components/Timeline'
+import { ReleaseUpdateButton, ReleaseUpdatePage } from './components/UpdateChecker'
 import { JourneyViewToggle } from './components/JourneyViewToggle'
 import type { JourneyViewMode } from './components/JourneyViewToggle'
 import { JourneyYearCards } from './components/JourneyYearCards'
 import type { DroneMediaItem } from './data/droneMedia'
 import { hasDroneMedia } from './data/droneMedia'
+import { localEditorAvailable } from './data/editorState'
+import { useReleaseUpdates } from './data/releaseUpdates'
 import { cities, cityById, countries, getCitiesForCountry, journeyDays, travelAtlasMeta } from './data/travelAtlas'
 import type { CityId, CountryId, JourneyDay, SelectionMode } from './types/travel'
 
@@ -65,8 +66,6 @@ function App() {
   const [globeDistance, setGlobeDistance] = useState(overviewDistance)
   const [globeResetVersion, setGlobeResetVersion] = useState(0)
   const [activePage, setActivePage] = useState<AtlasPage>('map')
-  const [mapTheme, setMapTheme] = useState<ThemeMode>('night')
-  const [interfaceLanguage, setInterfaceLanguage] = useState<InterfaceLanguage>('zh')
   const [imageryTuningByTheme, setImageryTuningByTheme] = useState(imageryTuningDefaults)
   const [journeyViewMode, setJourneyViewMode] = useState<JourneyViewMode>('timeline')
   const [activeDroneMediaCityId, setActiveDroneMediaCityId] = useState<CityId>()
@@ -76,10 +75,14 @@ function App() {
   const [sidebarsOpen, setSidebarsOpen] = useState(() =>
     typeof window === 'undefined' ? true : window.matchMedia(sidebarMediaQuery).matches,
   )
+  const releaseUpdates = useReleaseUpdates()
   const selectedCityHasDroneMedia = selectionMode === 'city' && selectedCityId
     ? hasDroneMedia(selectedCityId)
     : false
-  const activeTheme: ThemeMode = activePage === 'about' ? mapTheme : 'night'
+  const shouldShowDronePanel = Boolean(
+    selectionMode === 'city' && selectedCityId && (selectedCityHasDroneMedia || localEditorAvailable),
+  )
+  const activeTheme: ThemeMode = 'night'
   const imageryTuning = {
     ...imageryTuningDefaults[activeTheme],
     ...imageryTuningByTheme[activeTheme],
@@ -103,10 +106,7 @@ function App() {
   }
 
   useEffect(() => {
-    document.documentElement.lang = interfaceLanguage === 'zh' ? 'zh-CN' : 'en'
-  }, [interfaceLanguage])
-
-  useEffect(() => {
+    document.documentElement.lang = 'zh-CN'
     const mediaQuery = window.matchMedia(sidebarMediaQuery)
     const syncSidebarVisibility = (event: MediaQueryListEvent) => setSidebarsOpen(event.matches)
 
@@ -186,6 +186,7 @@ function App() {
   }
 
   const selectDroneMediaItem = (item: DroneMediaItem) => {
+    if (!item.position) return
     if (activeDroneMediaItemId === item.id) {
       setActiveDroneMediaItemId(undefined)
       setActiveDroneMediaCityId(undefined)
@@ -208,7 +209,7 @@ function App() {
   }
 
   const openPanorama = (item: DroneMediaItem) => {
-    if (activeDroneMediaItemId !== item.id) selectDroneMediaItem(item)
+    if (item.position && activeDroneMediaItemId !== item.id) selectDroneMediaItem(item)
     setPanoramaModalItem(item)
   }
 
@@ -255,25 +256,16 @@ function App() {
   }
 
   return (
-    <main className={`${activeTheme === 'night' ? 'theme-night' : 'theme-day'} relative ${activePage !== 'about' ? 'h-[100dvh] overflow-hidden bg-[#010409] text-slate-950' : 'min-h-screen overflow-x-hidden bg-[#f5f7fb] text-slate-950'}`}>
+    <main className="theme-night relative h-[100dvh] overflow-hidden bg-[#010409] text-slate-950">
       <div className="app-background fixed inset-0 -z-10" />
       <div className="app-grid fixed inset-0 -z-10" />
       <div className="star-field fixed inset-0 -z-10" />
       <AtlasHeader activePage={activePage} onPageChange={setActivePage} />
-      {activePage === 'about' ? (
-        <div className="absolute left-[50vw] top-[208px] z-40 -translate-x-1/2">
-          <DayNightToggle
-            theme={mapTheme}
-            onToggle={() => setMapTheme((theme) => theme === 'day' ? 'night' : 'day')}
-          />
-        </div>
-      ) : null}
-      {activePage !== 'about' ? (
-        <section
-          className="atlas-experience cesium-lab-page relative h-[100dvh] w-screen overflow-hidden"
-          data-page={activePage}
-          data-sidebars-open={sidebarsOpen}
-        >
+      <section
+        className="atlas-experience cesium-lab-page relative h-[100dvh] w-screen overflow-hidden"
+        data-page={activePage}
+        data-sidebars-open={sidebarsOpen}
+      >
           <div className="absolute inset-0 z-0">
             <CesiumAtlasGlobe
               hoveredCountryId={hoveredCountryId}
@@ -322,10 +314,11 @@ function App() {
 
               <div
                 className={`atlas-right-stack ${
-                  selectedCityHasDroneMedia ? 'atlas-right-stack-with-drone' : ''
+                  shouldShowDronePanel ? 'atlas-right-stack-with-drone' : ''
                 }`}
               >
                 <InfoCard
+                  key={`info-${selectionMode}-${selectedCountryId ?? 'none'}-${selectedCityId ?? 'none'}`}
                   mode={selectionMode}
                   selectedCountryId={selectedCountryId}
                   selectedCityId={selectedCityId}
@@ -333,8 +326,9 @@ function App() {
                   onOpenCityPhotos={setCityPhotoGallery}
                 />
 
-                {selectedCityHasDroneMedia ? (
+                {shouldShowDronePanel ? (
                   <DroneMediaCard
+                    key={`drone-${selectedCityId ?? 'none'}`}
                     cityId={selectedCityId}
                     activeItemId={activeDroneMediaItemId}
                     onSelectItem={selectDroneMediaItem}
@@ -342,15 +336,16 @@ function App() {
                   />
                 ) : null}
 
-                <MouseControlGuide language={interfaceLanguage} />
+                <MouseControlGuide language="zh" />
               </div>
 
               <div className="atlas-map-controls">
                 <button
                   type="button"
-                  className="atlas-sidebars-toggle pointer-events-auto"
+                  className="atlas-dock-button atlas-sidebars-toggle pointer-events-auto"
                   aria-pressed={sidebarsOpen}
                   aria-label={sidebarsOpen ? 'Hide both sidebars' : 'Show both sidebars'}
+                  title={sidebarsOpen ? '隐藏侧边栏' : '显示侧边栏'}
                   onClick={() => setSidebarsOpen((open) => !open)}
                 >
                   <span className="atlas-sidebars-toggle-icons" aria-hidden="true">
@@ -366,12 +361,15 @@ function App() {
                       </>
                     )}
                   </span>
-                  <span>{sidebarsOpen ? 'Hide panels' : 'Show panels'}</span>
                 </button>
-                <LanguageToggle
-                  language={interfaceLanguage}
-                  onToggle={() => setInterfaceLanguage((language) => language === 'zh' ? 'en' : 'zh')}
-                  className="atlas-theme-toggle"
+                <MeteorShowerButton />
+                <ReleaseUpdateButton
+                  active={activePage === 'about'}
+                  state={releaseUpdates}
+                  onOpen={() => {
+                    releaseUpdates.markSeen()
+                    setActivePage('about')
+                  }}
                 />
               </div>
             </div>
@@ -418,22 +416,14 @@ function App() {
               </div>
             </div>
           </div>
-        </section>
-      ) : null}
 
-      {activePage === 'about' ? (
-        <section className="mx-auto min-h-screen max-w-5xl px-4 pb-24 pt-[280px] text-center sm:px-6 lg:px-8">
-          <div className="glass-panel px-8 py-10">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">About</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-normal text-slate-950 sm:text-5xl">
-              A personal atlas
-            </h2>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-500">
-              TravelAtlas is a personal map of journeys, cities, games, architecture and memories.
-            </p>
+          <div
+            className="atlas-update-stage absolute inset-0 z-30"
+            aria-hidden={activePage !== 'about'}
+          >
+            <ReleaseUpdatePage state={releaseUpdates} />
           </div>
-        </section>
-      ) : null}
+      </section>
 
       {panoramaModalItem ? (
         <Suspense fallback={null}>

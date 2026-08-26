@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Drone, MapPin, RotateCcw, SlidersHorizontal } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, Drone, GripVertical, MapPin, Plus, RotateCcw, Settings2, SlidersHorizontal, Undo2, X } from 'lucide-react'
 import { hasDroneMedia } from '../data/droneMedia'
+import { localEditorAvailable, travelAtlasEditorState } from '../data/editorState'
+import { addLocalCountry, reloadAfterLocalSave, searchLocalCountries, updateLocalEditorState } from '../data/localEditorApi'
+import type { CountrySearchOption } from '../data/localEditorApi'
 import { countries, getCitiesForCountry, shouldHideCityFromNavigation } from '../data/travelAtlas'
 import type { CityId, CountryId } from '../types/travel'
+import { LocationSearchField } from './LocationSearchField'
+import { useFlipLayout } from './useFlipLayout'
 
 type CountrySelectorProps = {
   selectedCountryId?: CountryId
@@ -60,11 +65,141 @@ export function CountrySelector({
   onResetView,
 }: CountrySelectorProps) {
   const selectedCountry = selectedCountryId ? countries.find((country) => country.id === selectedCountryId) : undefined
-  const displayCountries = [...countries].reverse()
   const committedDistanceRef = useRef(globeDistance)
   const hasDraftDistanceChangeRef = useRef(false)
   const [isImageTuningOpen, setIsImageTuningOpen] = useState(false)
   const [isGlobeScaleOpen, setIsGlobeScaleOpen] = useState(true)
+  const defaultCountryIds = (travelAtlasEditorState.countryOrder.length > 0
+    ? countries
+    : [...countries].reverse()).map((country) => country.id)
+  const [isEditingCountries, setIsEditingCountries] = useState(false)
+  const [draftCountryIds, setDraftCountryIds] = useState<CountryId[]>(defaultCountryIds)
+  const [draftHiddenCountryIds, setDraftHiddenCountryIds] = useState<CountryId[]>(travelAtlasEditorState.hiddenCountryIds)
+  const [draggedCountryId, setDraggedCountryId] = useState<CountryId>()
+  const [showAddCountry, setShowAddCountry] = useState(false)
+  const [editorNotice, setEditorNotice] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [selectedCountryOption, setSelectedCountryOption] = useState<CountrySearchOption>()
+  const [countryVisitedDate, setCountryVisitedDate] = useState('')
+  const countryDragPointerRef = useRef<number | undefined>(undefined)
+  const countriesById = new Map(countries.map((country) => [country.id, country]))
+  const displayCountries = draftCountryIds.map((id) => countriesById.get(id)).filter(Boolean)
+  const countryListRef = useFlipLayout<HTMLDivElement>(draftCountryIds.join('|'))
+  const searchCountryOptions = useCallback(async (query: string, signal: AbortSignal) => {
+    const results = await searchLocalCountries(query, signal)
+    return results.filter((option) => !countries.some((country) => country.id === option.id))
+  }, [])
+
+  const resetCountryDraft = () => {
+    setDraftCountryIds(defaultCountryIds)
+    setDraftHiddenCountryIds(travelAtlasEditorState.hiddenCountryIds)
+    setShowAddCountry(false)
+    setSelectedCountryOption(undefined)
+    setCountryVisitedDate('')
+    setEditorNotice('已撤销本轮尚未保存的调整。')
+  }
+
+  const saveCountryDraft = async () => {
+    setIsSaving(true)
+    setEditorNotice('正在保存…')
+    try {
+      await updateLocalEditorState((current) => ({
+        ...current,
+        countryOrder: draftCountryIds,
+        hiddenCountryIds: draftHiddenCountryIds,
+      }))
+      reloadAfterLocalSave()
+    } catch (error) {
+      setEditorNotice(error instanceof Error ? error.message : '保存失败。')
+      setIsSaving(false)
+    }
+  }
+
+  const restoreHiddenCountries = async () => {
+    if (draftHiddenCountryIds.length === 0) return
+    setIsSaving(true)
+    try {
+      await updateLocalEditorState((current) => ({ ...current, hiddenCountryIds: [] }))
+      reloadAfterLocalSave()
+    } catch (error) {
+      setEditorNotice(error instanceof Error ? error.message : '恢复失败。')
+      setIsSaving(false)
+    }
+  }
+
+  const addCountry = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!selectedCountryOption) {
+      setEditorNotice('请先从候选列表中选择一个国家。')
+      return
+    }
+    setIsSaving(true)
+    setEditorNotice('正在创建国家…')
+    try {
+      await addLocalCountry(selectedCountryOption.countryCode, countryVisitedDate)
+      reloadAfterLocalSave()
+    } catch (error) {
+      setEditorNotice(error instanceof Error ? error.message : '创建失败。')
+      setIsSaving(false)
+    }
+  }
+
+  const moveCountryAtPointer = useCallback((countryId: CountryId, clientY: number) => {
+    const container = countryListRef.current
+    if (!container) return
+    const containerRect = container.getBoundingClientRect()
+    if (clientY < containerRect.top + 42) container.scrollTop -= 18
+    if (clientY > containerRect.bottom - 42) container.scrollTop += 18
+    const rows = Array.from(container.querySelectorAll<HTMLElement>('[data-country-sort-id]'))
+      .filter((row) => row.dataset.countrySortId !== countryId)
+    const beforeRow = rows.find((row) => {
+      const rect = row.getBoundingClientRect()
+      return clientY < rect.top + rect.height / 2
+    })
+    const beforeId = beforeRow?.dataset.countrySortId
+
+    setDraftCountryIds((current) => {
+      const next = current.filter((id) => id !== countryId)
+      const targetIndex = beforeId ? next.indexOf(beforeId) : next.length
+      next.splice(targetIndex < 0 ? next.length : targetIndex, 0, countryId)
+      return next.every((id, index) => id === current[index]) ? current : next
+    })
+  }, [countryListRef])
+
+  const moveCountryByStep = (countryId: CountryId, step: -1 | 1) => {
+    setDraftCountryIds((current) => {
+      const currentIndex = current.indexOf(countryId)
+      const nextIndex = Math.max(0, Math.min(current.length - 1, currentIndex + step))
+      if (currentIndex < 0 || currentIndex === nextIndex) return current
+      const next = [...current]
+      next.splice(currentIndex, 1)
+      next.splice(nextIndex, 0, countryId)
+      return next
+    })
+  }
+
+  useEffect(() => {
+    if (!draggedCountryId) return
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (countryDragPointerRef.current !== event.pointerId) return
+      moveCountryAtPointer(draggedCountryId, event.clientY)
+    }
+    const finishPointerDrag = (event: PointerEvent) => {
+      if (countryDragPointerRef.current !== event.pointerId) return
+      countryDragPointerRef.current = undefined
+      setDraggedCountryId(undefined)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', finishPointerDrag)
+    window.addEventListener('pointercancel', finishPointerDrag)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', finishPointerDrag)
+      window.removeEventListener('pointercancel', finishPointerDrag)
+    }
+  }, [draggedCountryId, moveCountryAtPointer])
 
   useEffect(() => {
     committedDistanceRef.current = globeDistance
@@ -83,7 +218,7 @@ export function CountrySelector({
 
   return (
     <aside className="atlas-left-panel glass-panel pointer-events-auto z-30 flex w-full max-w-[340px] flex-col p-4 text-left">
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="atlas-country-panel-heading mb-4 flex items-end justify-between gap-3">
         <div className="atlas-panel-body">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white">
             Country Maps
@@ -92,20 +227,134 @@ export function CountrySelector({
             国家足迹
           </h2>
         </div>
+        {localEditorAvailable ? (
+          <div className="atlas-local-editor-actions">
+            {isEditingCountries ? (
+              <>
+                <button type="button" onClick={resetCountryDraft} aria-label="撤销本轮国家调整" title="撤销本轮未保存调整"><Undo2 /></button>
+                <button type="button" onClick={() => setShowAddCountry((open) => !open)} aria-label="添加国家" title="添加国家"><Plus /></button>
+                <button type="button" data-primary="true" onClick={saveCountryDraft} disabled={isSaving} aria-label="保存国家调整" title="保存"><Check /></button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              data-active={isEditingCountries}
+              onClick={() => {
+                if (isEditingCountries) resetCountryDraft()
+                setIsEditingCountries((editing) => !editing)
+              }}
+              aria-label={isEditingCountries ? '退出国家编辑' : '编辑国家足迹'}
+              title={isEditingCountries ? '退出编辑' : '本地编辑'}
+            >
+              {isEditingCountries ? <X /> : <Settings2 />}
+            </button>
+          </div>
+        ) : null}
       </div>
 
-      <div className="atlas-panel-body selector-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto pr-2">
+      {isEditingCountries && showAddCountry ? (
+        <form className="atlas-local-editor-form" onSubmit={addCountry}>
+          <p>先创建国家；城市请在进入该国家后的 City Cards 中添加。</p>
+          <LocationSearchField
+            label="国家名称"
+            placeholder="输入中文、English、CN…"
+            selected={selectedCountryOption}
+            search={searchCountryOptions}
+            onSelect={setSelectedCountryOption}
+            minQueryLength={0}
+            getMeta={(option) => `${option.countryCode}${option.region ? ` · ${option.region}` : ''}`}
+          />
+          <label className="atlas-local-editor-date-field">
+            <span>首次到访日期</span>
+            <input required type="date" value={countryVisitedDate} onChange={(event) => setCountryVisitedDate(event.target.value)} />
+          </label>
+          <button type="submit" disabled={isSaving || !selectedCountryOption}>确认添加国家</button>
+        </form>
+      ) : null}
+
+      {isEditingCountries && draftHiddenCountryIds.length > 0 ? (
+        <button type="button" className="atlas-local-editor-restore" onClick={restoreHiddenCountries} disabled={isSaving}>
+          恢复已隐藏国家（{draftHiddenCountryIds.length}）
+        </button>
+      ) : null}
+      {editorNotice ? <p className="atlas-local-editor-notice" role="status">{editorNotice}</p> : null}
+
+      <div ref={countryListRef} className="atlas-country-list atlas-panel-body selector-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto">
         {displayCountries.map((country) => {
+          if (!country) return null
           const isSelected = country.id === selectedCountry?.id
           const countryCities = getCitiesForCountry(country.id).filter((city) => !shouldHideCityFromNavigation(city))
 
           return (
-            <div key={country.id} className="country-disclosure">
+            <div
+              key={country.id}
+              data-flip-id={country.id}
+              data-country-sort-id={country.id}
+              className="country-disclosure"
+              data-editing={isEditingCountries}
+              data-dragging={draggedCountryId === country.id}
+            >
+              {isEditingCountries ? (
+                <div className="atlas-local-editor-row-tools">
+                  <button
+                    type="button"
+                    className="atlas-local-editor-drag"
+                    aria-label={`拖动${country.nameZh}排序`}
+                    title="按住后直接上下拖动；方向键也可调整"
+                    onPointerDown={(event) => {
+                      if (event.button !== 0) return
+                      event.preventDefault()
+                      countryDragPointerRef.current = event.pointerId
+                      event.currentTarget.setPointerCapture(event.pointerId)
+                      setDraggedCountryId(country.id)
+                    }}
+                    onPointerMove={(event) => {
+                      if (countryDragPointerRef.current !== event.pointerId) return
+                      moveCountryAtPointer(country.id, event.clientY)
+                    }}
+                    onPointerUp={(event) => {
+                      if (countryDragPointerRef.current !== event.pointerId) return
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+                      countryDragPointerRef.current = undefined
+                      setDraggedCountryId(undefined)
+                    }}
+                    onPointerCancel={() => {
+                      countryDragPointerRef.current = undefined
+                      setDraggedCountryId(undefined)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'ArrowUp') {
+                        event.preventDefault()
+                        moveCountryByStep(country.id, -1)
+                      }
+                      if (event.key === 'ArrowDown') {
+                        event.preventDefault()
+                        moveCountryByStep(country.id, 1)
+                      }
+                    }}
+                  ><GripVertical /></button>
+                  <button
+                    type="button"
+                    className="atlas-local-editor-hide"
+                    aria-label={`隐藏${country.nameZh}`}
+                    title="隐藏（保存前可撤销）"
+                    onClick={() => {
+                      if (!window.confirm(`从本地展示中隐藏“${country.nameZh}”？原始旅行记录不会删除。`)) return
+                      setDraftCountryIds((current) => current.filter((id) => id !== country.id))
+                      setDraftHiddenCountryIds((current) => [...new Set([...current, country.id])])
+                    }}
+                  >
+                    <X />
+                  </button>
+                </div>
+              ) : null}
               <button
                 type="button"
                 aria-expanded={isSelected}
                 data-selected={isSelected}
-                onClick={() => onSelectCountry(country.id)}
+                onClick={() => {
+                  if (!isEditingCountries) onSelectCountry(country.id)
+                }}
                 onPointerEnter={(event) => {
                   if (event.pointerType === 'mouse') onHoverCountry(country.id)
                 }}

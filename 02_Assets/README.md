@@ -12,17 +12,16 @@
 
 Users copy `_country-template/`, rename it to a TravelAtlas country, create one folder per city, and place that city's media into its `photos/` and `drone/` branches. If any country, city, media type, coordinate, privacy status, or intended use is uncertain, the Agent asks before acting and leaves the item unimported until it has a reliable answer. From `01_Web/`, the Agent runs `npm run media:check` before `npm run media:import`.
 
-The complete folder contract, conversion rules, metadata requirements, and no-delete behavior are documented in [[TravelAtlas_media_import_protocol]].
+The complete folder contract, conversion rules, metadata requirements, and no-delete behavior are documented in the [media import protocol](../03_Reference/TravelAtlas_media_import_protocol.md).
 
 ## Public Release Rule
 
-TravelAtlas is intended to become an open-source website shell. Personal travel media never enters the public template. Only explicitly licensed or generated sample assets may be included in a clean public repository; see [[TravelAtlas_open_source_privacy_boundary]].
+TravelAtlas is an open-source website shell. Personal travel media never enters the public template. Only explicitly licensed or generated sample assets may be included in a clean public repository; see the [open-source privacy boundary](../03_Reference/TravelAtlas_open_source_privacy_boundary.md).
 
-## Structure Links
+## Documentation
 
-- Project entry: [[TravelAtlas_README]]
-- Project index: [[00_TravelAtlas_index]]
-- Web workspace: [[ProductionLab/04_Project/TravelAtlas/01_Web/README|Web README]]
-- Media Inbox: [[ProductionLab/04_Project/TravelAtlas/02_Assets/MediaInbox/README|Media Inbox README]]
-- Import protocol: [[TravelAtlas_media_import_protocol]]
-- Open-source privacy boundary: [[TravelAtlas_open_source_privacy_boundary]]
+- [Public guide](../README.md)
+- [Web workspace](../01_Web/README.md)
+- [Media Inbox](MediaInbox/README.md)
+- [Import protocol](../03_Reference/TravelAtlas_media_import_protocol.md)
+- [Open-source privacy boundary](../03_Reference/TravelAtlas_open_source_privacy_boundary.md)

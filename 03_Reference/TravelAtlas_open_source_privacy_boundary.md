@@ -2,12 +2,16 @@
 
 ## 目标
 
-TravelAtlas 使用同一套应用代码支持两种运行状态：
+TravelAtlas 是一个产品、一套代码和一套数据模型，不是需要分别维护的两个版本。它支持两种运行状态：
 
-1. 个人状态加载本机私有旅行记录与照片，保持完整个人网站体验。
-2. 开源状态在没有任何私有文件时自动加载中性示例数据，形成可直接运行的公开模板。
+1. **本地编辑态**：`npm run dev` 启动 Vite 页面与仅限本机的写入中间件，显示编辑按钮，加载本机私有旅行记录与照片。
+2. **公开展示态**：`npm run build` 生成静态网站，不渲染编辑按钮，也不存在本地写入接口；没有私有文件时自动加载中性示例数据。
 
-当前私人开发仓库不直接公开。正式发布时从允许清单创建一个不继承私人 Git 历史的干净仓库。
+每个下载开源项目的用户都拥有本地编辑能力；只有部署产物是只读展示。编辑能力不是原作者专属，也不依赖聊天框、DeepSeek Harness 或在线 AI。
+
+本地编辑中的国家候选来自随开发依赖安装的结构化国家目录；城市候选由用户明确点击检索后，通过国家代码约束的 OpenStreetMap Nominatim 联网查询获得，不做逐键自动补全。它不需要 API Key，不把完整世界城市库打进前端，也不会把查询结果写入 Git；只有用户明确选中并确认的国家或城市才进入被忽略的本地数据。日期仍由用户明确填写。
+
+公共仓库由下方允许清单生成，不继承私人开发仓库的本地 Git 历史。
 
 ## 运行时优先级
 
@@ -30,6 +34,7 @@ TravelAtlas 使用同一套应用代码支持两种运行状态：
 | React / Cesium / UI 源码 | 保留 | 保留 | 产品主体 |
 | `travel-map.sample.json` | 保留 | 保留 | 中性可运行示例 |
 | `travel-map.local.json` | 本机保留、Git 忽略 | 不包含 | 个人国家、城市、路线和显示规则 |
+| `editor-state.local.json` | 本机保留、Git 忽略 | 不包含 | 排序、隐藏、封面和媒体布局等本地编辑状态 |
 | `MediaInbox/<真实国家>/` | 本机保留、Git 忽略 | 不包含 | 原始媒体不可修改；只允许 Agent 创建或更新私有控制旁车 `country.json` 与城市级 `media.json` |
 | `public/media/user/` | 本机保留、Git 忽略 | 不包含 | 网页使用的个人媒体副本 |
 | `user-media.local.json` | 本机保留、Git 忽略 | 不包含 | 个人媒体目录与无人机坐标 |
@@ -42,7 +47,7 @@ TravelAtlas 使用同一套应用代码支持两种运行状态：
 
 个人旅行记录已经进入被忽略的 `travel-map.local.json`，个人原图进入保持原始媒体不可变的 Inbox，网站副本和目录进入被忽略的 `public/media/user/` 与 `user-media.local.json`。Inbox 中只有私有映射旁车 `country.json` 与城市级 `media.json` 可由 Agent 创建或更新。应用仍优先加载这些文件，因此国家列表、城市、相机初始位置和 Drone Media 交互保持个人版本。
 
-公开用户克隆仓库时没有这些文件，应用自动显示 North Atlantic 中性示例。用户复制示例数据到 `generated/travel-map.local.json`，替换成自己的记录，再按 [[TravelAtlas_media_import_protocol]] 投放照片；国家和城市列表会从其数据自动生成，不继承原作者列表。
+公开用户克隆仓库时没有这些文件，应用自动显示 North Atlantic 中性示例。用户复制示例数据到 `generated/travel-map.local.json`，替换成自己的记录，再按[媒体导入协议](TravelAtlas_media_import_protocol.md)投放照片；国家和城市列表会从其数据自动生成，不继承原作者列表。
 
 ## GitHub 与网站公开性的区别
 
@@ -51,14 +56,18 @@ GitHub 不包含个人照片和旅行数据。若个人网站本身部署到公�
 - 从本机完成包含私有数据的构建后直接部署构建产物，不通过公开 GitHub 构建。
 - 把个人媒体放在独立对象存储中，公开仓库只保留应用代码。
 
+本地开发服务中的 `/__travelatlas/editor/*` 由 Vite 的 `serve` 阶段临时注册，只接受本机同源请求。正式构建不携带这个服务端能力；隐藏编辑按钮本身不作为安全措施，真正的边界是公开部署中没有写入接口。
+
 ## 干净公开仓库允许清单
 
 正式开源时只从当前工作区复制：
 
-- 根目录 `AGENTS.md`、`TravelAtlas_README.md`、`.gitignore`，以及公开用户和陌生 Agent 发现本项目规则所需的本地索引与说明文件。
+- 根目录 `README.md`、`README.zh.md`、`LICENSE`、`AGENTS.md` 与 `.gitignore`。
 - `01_Web/`，排除 `src/data/generated/`、`public/media/user/`、`.env.local`、构建输出和本地缓存。
 - `02_Assets/MediaInbox/README.md` 与 `_country-template/`。
-- `02_Assets/README.md`、媒体与旅行数据 Schema、导入协议、开源隐私边界、公开安装说明、许可证和明确授权的示例资产。
+- `02_Assets/README.md`、媒体与旅行数据 Schema、导入协议、开源隐私边界、公开安装说明和明确授权的示例资产。
+
+私人备案工作日志、项目级 Handoff、内部设计 QA、MediaLab 索引与本机路径说明不进入公共仓库。它们继续留在本地项目历史中，公共仓库只承载产品、使用说明和陌生用户真正需要的 Agent 规则。
 
 不得直接复制当前 `.git/`。这能避免已经从工作树删除的个人照片和旅行数据通过历史提交重新出现。
 
@@ -75,9 +84,8 @@ npm run build
 
 `privacy:check` 检查当前文件边界；它不能清洗历史。因此公开发布仍必须使用全新 Git 历史，或另行执行经过确认的历史清理。
 
-## 结构链接
+## 相关文档
 
-- 项目入口：[[TravelAtlas_README]]
-- 项目索引：[[00_TravelAtlas_index]]
-- 媒体导入协议：[[TravelAtlas_media_import_protocol]]
-- Web 工作区：[[ProductionLab/04_Project/TravelAtlas/01_Web/README|Web README]]
+- [公共使用说明](../README.zh.md)
+- [媒体导入协议](TravelAtlas_media_import_protocol.md)
+- [Web 工作区说明](../01_Web/README.md)

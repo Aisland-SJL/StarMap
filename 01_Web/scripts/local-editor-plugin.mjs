@@ -1,0 +1,615 @@
+import { createReadStream, createWriteStream } from 'node:fs'
+import { access, copyFile, mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { pipeline } from 'node:stream/promises'
+import { fileURLToPath } from 'node:url'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import sharp from 'sharp'
+import { EnvHttpProxyAgent, fetch as proxyAwareFetch } from 'undici'
+import worldCountries from 'world-countries'
+
+const execFileAsync = promisify(execFile)
+const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const projectRoot = path.resolve(webRoot, '..')
+const generatedRoot = path.join(webRoot, 'src', 'data', 'generated')
+const editorStatePath = path.join(generatedRoot, 'editor-state.local.json')
+const localTravelMapPath = path.join(generatedRoot, 'travel-map.local.json')
+const sampleTravelMapPath = path.join(webRoot, 'src', 'data', 'travel-map.sample.json')
+const inboxRoot = path.join(projectRoot, '02_Assets', 'MediaInbox')
+const editorHeader = 'x-travelatlas-local-editor'
+const maxUploadBytes = 250 * 1024 * 1024
+const citySearchDispatcher = new EnvHttpProxyAgent()
+
+const emptyState = {
+  schemaVersion: 1,
+  addedCountries: [],
+  countryOrder: [],
+  hiddenCountryIds: [],
+  cityOrderByCountry: {},
+  hiddenCityIds: [],
+  mediaOrderByCity: {},
+  hiddenMediaIds: [],
+  coverMediaByCity: {},
+  droneOrderByCity: {},
+  hiddenDroneMediaIds: [],
+}
+
+const exists = async (target) => access(target).then(() => true, () => false)
+const readJson = async (target, fallback) => {
+  try {
+    return JSON.parse(await readFile(target, 'utf8'))
+  } catch (error) {
+    if (error?.code === 'ENOENT') return fallback
+    throw error
+  }
+}
+
+const sendJson = (response, status, body) => {
+  response.statusCode = status
+  response.setHeader('content-type', 'application/json; charset=utf-8')
+  response.setHeader('cache-control', 'no-store')
+  response.end(JSON.stringify(body))
+}
+
+const readJsonBody = async (request) => {
+  const chunks = []
+  let size = 0
+  for await (const chunk of request) {
+    size += chunk.length
+    if (size > 1024 * 1024) throw new Error('请求内容过大。')
+    chunks.push(chunk)
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+}
+
+const isStringArray = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string')
+const isStringArrayRecord = (value) => value && typeof value === 'object'
+  && Object.values(value).every(isStringArray)
+const isStringRecord = (value) => value && typeof value === 'object'
+  && Object.values(value).every((item) => typeof item === 'string')
+
+const normalizeAddedCountry = (value) => {
+  if (!value || typeof value !== 'object') return undefined
+  const centerLat = Number(value.centerLat)
+  const centerLng = Number(value.centerLng)
+  if (
+    typeof value.id !== 'string'
+    || typeof value.nameZh !== 'string'
+    || typeof value.nameEn !== 'string'
+    || typeof value.countryCode !== 'string'
+    || !Number.isFinite(centerLat)
+    || !Number.isFinite(centerLng)
+  ) return undefined
+  return {
+    id: value.id,
+    nameZh: value.nameZh,
+    nameEn: value.nameEn,
+    countryCode: value.countryCode.toLowerCase(),
+    centerLat,
+    centerLng,
+    ...(typeof value.region === 'string' && value.region ? { region: value.region } : {}),
+    ...(typeof value.visitedDate === 'string' && value.visitedDate ? { visitedDate: value.visitedDate } : {}),
+  }
+}
+
+const normalizeState = (value) => {
+  if (!value || typeof value !== 'object') throw new Error('编辑状态格式无效。')
+  return {
+    schemaVersion: 1,
+    addedCountries: Array.isArray(value.addedCountries)
+      ? value.addedCountries.map(normalizeAddedCountry).filter(Boolean)
+      : [],
+    countryOrder: isStringArray(value.countryOrder) ? value.countryOrder : [],
+    hiddenCountryIds: isStringArray(value.hiddenCountryIds) ? value.hiddenCountryIds : [],
+    cityOrderByCountry: isStringArrayRecord(value.cityOrderByCountry) ? value.cityOrderByCountry : {},
+    hiddenCityIds: isStringArray(value.hiddenCityIds) ? value.hiddenCityIds : [],
+    mediaOrderByCity: isStringArrayRecord(value.mediaOrderByCity) ? value.mediaOrderByCity : {},
+    hiddenMediaIds: isStringArray(value.hiddenMediaIds) ? value.hiddenMediaIds : [],
+    coverMediaByCity: isStringRecord(value.coverMediaByCity) ? value.coverMediaByCity : {},
+    droneOrderByCity: isStringArrayRecord(value.droneOrderByCity) ? value.droneOrderByCity : {},
+    hiddenDroneMediaIds: isStringArray(value.hiddenDroneMediaIds) ? value.hiddenDroneMediaIds : [],
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+const atomicJsonWrite = async (target, value) => {
+  await mkdir(path.dirname(target), { recursive: true })
+  if (await exists(target)) await copyFile(target, target.replace(/\.json$/i, '.bak'))
+  const temporaryPath = `${target}.${process.pid}.tmp`
+  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8')
+  await rename(temporaryPath, target)
+}
+
+const slugify = (value) => value
+  .toLowerCase()
+  .normalize('NFKC')
+  .trim()
+  .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
+  .replace(/^-|-$/g, '')
+
+const countryCatalog = worldCountries
+  .filter((country) => country.cca2 && Array.isArray(country.latlng) && country.latlng.length === 2)
+  .map((country) => ({
+    id: slugify(country.name.common),
+    nameZh: country.translations?.zho?.common
+      ?? country.name.native?.zho?.common
+      ?? country.name.common,
+    nameEn: country.name.common,
+    countryCode: country.cca2.toUpperCase(),
+    countryCode3: country.cca3?.toUpperCase() ?? '',
+    centerLat: Number(country.latlng[0]),
+    centerLng: Number(country.latlng[1]),
+    region: country.region || undefined,
+    searchTerms: [
+      country.name.common,
+      country.name.official,
+      country.translations?.zho?.common,
+      country.translations?.zho?.official,
+      country.cca2,
+      country.cca3,
+      ...(country.altSpellings ?? []),
+    ].filter(Boolean).map((item) => String(item).toLocaleLowerCase()),
+  }))
+
+const countryCatalogByCode = new Map(countryCatalog.map((country) => [country.countryCode, country]))
+
+const countryMatchScore = (country, rawQuery) => {
+  const query = rawQuery.trim().toLocaleLowerCase()
+  if (!query) return 3
+  if (
+    country.countryCode.toLocaleLowerCase() === query
+    || country.countryCode3.toLocaleLowerCase() === query
+    || country.nameZh.toLocaleLowerCase() === query
+    || country.nameEn.toLocaleLowerCase() === query
+  ) return 0
+  if (country.searchTerms.some((term) => term.startsWith(query))) return 1
+  if (country.searchTerms.some((term) => term.includes(query))) return 2
+  return Number.POSITIVE_INFINITY
+}
+
+const searchCountryCatalog = (query) => countryCatalog
+  .map((country) => ({ country, score: countryMatchScore(country, query) }))
+  .filter(({ score }) => Number.isFinite(score))
+  .sort((left, right) => left.score - right.score || left.country.nameZh.localeCompare(right.country.nameZh, 'zh-CN'))
+  .slice(0, 10)
+  .map(({ country }) => ({
+    id: country.id,
+    nameZh: country.nameZh,
+    nameEn: country.nameEn,
+    countryCode: country.countryCode,
+    centerLat: country.centerLat,
+    centerLng: country.centerLng,
+    region: country.region,
+  }))
+
+const addCountry = async (input) => {
+  const countryCode = requireText(input.countryCode, '国家代码').toUpperCase()
+  const country = countryCatalogByCode.get(countryCode)
+  if (!country) throw new Error('没有找到这个国家，请从候选列表中选择。')
+  const visitedDate = requireText(input.visitedDate, '首次到访日期')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(visitedDate)) throw new Error('首次到访日期必须使用 YYYY-MM-DD。')
+
+  const sourcePath = await exists(localTravelMapPath) ? localTravelMapPath : sampleTravelMapPath
+  const travelMap = await readJson(sourcePath, { records: [] })
+  if (travelMap.records?.some((record) => countryIdForRecord(record) === country.id)) {
+    throw new Error('这个国家已经存在于国家足迹中。')
+  }
+
+  const state = normalizeState(await readJson(editorStatePath, emptyState))
+  if (state.addedCountries.some((candidate) => candidate.id === country.id)) {
+    throw new Error('这个国家已经存在于国家足迹中。')
+  }
+  state.addedCountries = [...state.addedCountries, {
+    id: country.id,
+    nameZh: country.nameZh,
+    nameEn: country.nameEn,
+    countryCode: country.countryCode.toLowerCase(),
+    centerLat: country.centerLat,
+    centerLng: country.centerLng,
+    region: country.region,
+    visitedDate,
+  }]
+  state.countryOrder = [country.id, ...state.countryOrder.filter((id) => id !== country.id)]
+  await atomicJsonWrite(editorStatePath, normalizeState(state))
+  return { countryId: country.id }
+}
+
+const citySearchCache = new Map()
+let citySearchQueue = Promise.resolve()
+let lastCitySearchAt = 0
+
+const queueCitySearch = (search) => {
+  const queued = citySearchQueue.then(async () => {
+    const delay = Math.max(0, 1_050 - (Date.now() - lastCitySearchAt))
+    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
+    lastCitySearchAt = Date.now()
+    return search()
+  })
+  citySearchQueue = queued.catch(() => undefined)
+  return queued
+}
+
+const searchCityCatalog = async (query, countryCode) => {
+  const normalizedQuery = requireText(query, '城市名称')
+  const normalizedCountryCode = requireText(countryCode, '国家代码').toLowerCase()
+  if (!/^[a-z]{2}$/.test(normalizedCountryCode)) throw new Error('国家代码无效。')
+  const cacheKey = `${normalizedCountryCode}:${normalizedQuery.toLocaleLowerCase()}`
+  const cached = citySearchCache.get(cacheKey)
+  if (cached) return cached
+
+  const results = await queueCitySearch(async () => {
+    const url = new URL('https://nominatim.openstreetmap.org/search')
+    url.search = new URLSearchParams({
+      q: normalizedQuery,
+      countrycodes: normalizedCountryCode,
+      featureType: 'settlement',
+      layer: 'address',
+      format: 'jsonv2',
+      addressdetails: '1',
+      namedetails: '1',
+      limit: '8',
+      'accept-language': 'zh-CN,en',
+    }).toString()
+    const response = await proxyAwareFetch(url, {
+      dispatcher: citySearchDispatcher,
+      headers: {
+        'user-agent': 'TravelAtlas-LocalEditor/1.0 (local-first travel atlas editor)',
+        referer: 'http://127.0.0.1/',
+      },
+    })
+    if (!response.ok) throw new Error(`城市检索服务暂时不可用（${response.status}）。`)
+    const body = await response.json()
+    const seen = new Set()
+    return body.flatMap((place) => {
+      const lat = Number(place.lat)
+      const lng = Number(place.lon)
+      const address = place.address ?? {}
+      const names = place.namedetails ?? {}
+      const nameEn = names['name:en'] || names.name || String(place.display_name ?? '').split(',')[0]
+      const nameZh = names['name:zh'] || names['name:zh-Hans'] || names['name:zh_CN'] || nameEn
+      const id = `${place.osm_type ?? 'place'}-${place.osm_id ?? place.place_id}`
+      if (!nameEn || !Number.isFinite(lat) || !Number.isFinite(lng) || seen.has(id)) return []
+      seen.add(id)
+      return [{
+        id,
+        nameZh,
+        nameEn,
+        countryCode: normalizedCountryCode.toUpperCase(),
+        lat,
+        lng,
+        detail: [address.state, address.region, address.country].filter(Boolean).join(' · '),
+      }]
+    })
+  })
+  citySearchCache.set(cacheKey, results)
+  return results
+}
+
+const countryIdForRecord = (record) => slugify(record.country_en || record.country || 'unknown-country')
+const cityIdForRecord = (record) => `${countryIdForRecord(record)}__${slugify(record.city_en || record.city || record.id)}`
+
+const getLocation = async (countryId, cityId) => {
+  const sourcePath = await exists(localTravelMapPath) ? localTravelMapPath : sampleTravelMapPath
+  const travelMap = await readJson(sourcePath, { records: [] })
+  const record = travelMap.records?.find((candidate) => (
+    countryIdForRecord(candidate) === countryId && cityIdForRecord(candidate) === cityId
+  ))
+  if (!record) throw new Error('找不到对应的国家和城市，请先把城市加入旅行数据。')
+  return {
+    countryId,
+    cityId,
+    countryName: record.country_en || record.country,
+    cityName: record.city_en || record.city,
+  }
+}
+
+const requireText = (value, label) => {
+  const text = typeof value === 'string' ? value.trim() : ''
+  if (!text) throw new Error(`请填写${label}。`)
+  return text
+}
+
+const numberInRange = (value, min, max, label) => {
+  if (value === null || value === undefined || (typeof value === 'string' && !value.trim())) {
+    throw new Error(`请填写${label}。`)
+  }
+  const number = Number(value)
+  if (!Number.isFinite(number) || number < min || number > max) throw new Error(`${label}无效。`)
+  return number
+}
+
+const ensureLocalTravelMap = async () => {
+  if (!await exists(localTravelMapPath)) {
+    const sample = await readJson(sampleTravelMapPath, { schema_version: 1, records: [] })
+    await atomicJsonWrite(localTravelMapPath, {
+      ...sample,
+      generated_at: new Date().toISOString(),
+      privacy_level: 'private-local',
+    })
+  }
+  return readJson(localTravelMapPath, { schema_version: 1, records: [] })
+}
+
+const addTravelRecord = async (input) => {
+  const country = requireText(input.country, '国家中文名')
+  const countryEn = requireText(input.country_en, '国家英文名')
+  const city = requireText(input.city, '城市中文名')
+  const cityEn = requireText(input.city_en, '城市英文名')
+  const startDate = requireText(input.start_date, '到访日期')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error('到访日期必须使用 YYYY-MM-DD。')
+  const endDate = typeof input.end_date === 'string' && input.end_date.trim() ? input.end_date.trim() : undefined
+  if (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) throw new Error('结束日期必须使用 YYYY-MM-DD。')
+  if (endDate && endDate < startDate) throw new Error('结束日期不能早于到访日期。')
+  const lat = numberInRange(input.lat, -90, 90, '纬度')
+  const lng = numberInRange(input.lng, -180, 180, '经度')
+  const countryCode = typeof input.country_code === 'string' ? input.country_code.trim().toUpperCase() : ''
+  if (countryCode && !/^[A-Z]{2}$/.test(countryCode)) throw new Error('国家代码必须是两个英文字母。')
+  const travelMap = await ensureLocalTravelMap()
+  const targetCountryId = slugify(countryEn)
+  const targetCityId = `${targetCountryId}__${slugify(cityEn)}`
+  const duplicate = travelMap.records?.some((record) => cityIdForRecord(record) === targetCityId)
+  if (duplicate) throw new Error('这个城市已经存在；如需增加一次新的行程，请使用行程编辑，而不是重复添加城市。')
+  const idBase = `manual-${startDate}-${slugify(countryEn)}-${slugify(cityEn)}`
+  const ids = new Set((travelMap.records ?? []).map((record) => record.id))
+  let id = idBase
+  for (let suffix = 2; ids.has(id); suffix += 1) id = `${idBase}-${suffix}`
+
+  travelMap.records = [...(travelMap.records ?? []), {
+    id,
+    country,
+    country_en: countryEn,
+    ...(countryCode
+      ? { country_code: countryCode }
+      : {}),
+    city,
+    city_en: cityEn,
+    start_date: startDate,
+    ...(endDate ? { end_date: endDate } : {}),
+    year: Number(startDate.slice(0, 4)),
+    trip_title: typeof input.trip_title === 'string' && input.trip_title.trim()
+      ? input.trip_title.trim()
+      : `${country} · ${city}`,
+    type: 'visit',
+    status: 'visited',
+    lat,
+    lng,
+    source: 'local-editor',
+  }]
+  travelMap.generated_at = new Date().toISOString()
+  await atomicJsonWrite(localTravelMapPath, travelMap)
+  return { id, countryId: targetCountryId, cityId: targetCityId }
+}
+
+const safeSegment = (value, label) => {
+  const cleaned = String(value ?? '').trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')
+  if (!cleaned || cleaned === '.' || cleaned === '..') throw new Error(`${label}无效。`)
+  return cleaned.slice(0, 120)
+}
+
+const reserveDestination = async (directory, originalName) => {
+  const parsed = path.parse(safeSegment(originalName, '文件名'))
+  for (let index = 0; index < 1000; index += 1) {
+    const suffix = index === 0 ? '' : `-${index}`
+    const candidate = path.join(directory, `${parsed.name}${suffix}${parsed.ext.toLowerCase()}`)
+    if (!await exists(candidate)) return candidate
+  }
+  throw new Error('同名文件过多，请先整理文件名。')
+}
+
+const writeUpload = async (request, destination) => {
+  const contentLength = Number(request.headers['content-length'] ?? 0)
+  if (!Number.isFinite(contentLength) || contentLength <= 0) throw new Error('没有收到文件内容。')
+  if (contentLength > maxUploadBytes) throw new Error('单个文件不能超过 250 MiB。')
+
+  const temporaryPath = path.join(tmpdir(), `travelatlas-upload-${process.pid}-${Date.now()}`)
+  let received = 0
+  request.on('data', (chunk) => {
+    received += chunk.length
+    if (received > maxUploadBytes) request.destroy(new Error('单个文件不能超过 250 MiB。'))
+  })
+
+  try {
+    await pipeline(request, createWriteStream(temporaryPath, { flags: 'wx' }))
+    const imageMetadata = await sharp(temporaryPath).metadata()
+    if (!imageMetadata.width || !imageMetadata.height) throw new Error('无法读取图片尺寸或文件内容无效。')
+    await mkdir(path.dirname(destination), { recursive: true })
+    await pipeline(createReadStream(temporaryPath), createWriteStream(destination, { flags: 'wx' }))
+    return imageMetadata
+  } finally {
+    await unlink(temporaryPath).catch(() => undefined)
+  }
+}
+
+const updateDroneSidecar = async (cityRoot, destination, metadata, imageMetadata) => {
+  const sidecarPath = path.join(cityRoot, 'media.json')
+  const sidecar = await readJson(sidecarPath, {})
+  const relativeKey = path.posix.join('drone', path.basename(destination))
+  sidecar[relativeKey] = {
+    kind: metadata.kind,
+    titleZh: metadata.titleZh,
+    titleEn: metadata.titleEn,
+    date: metadata.date,
+    resolution: `${imageMetadata.width} × ${imageMetadata.height}`,
+    captureType: metadata.kind === 'panorama360' ? 'Drone 360 Panorama' : 'Aerial Photo',
+    ...(metadata.lat === undefined || metadata.lng === undefined ? {} : {
+      position: {
+        lat: metadata.lat,
+        lng: metadata.lng,
+        ...(metadata.altitudeMeters === undefined ? {} : { altitudeMeters: metadata.altitudeMeters }),
+      },
+    }),
+    ...(metadata.altitudeMeters === undefined ? {} : { altitudeMeters: metadata.altitudeMeters }),
+    ...(metadata.relativeAltitudeMeters === undefined ? {} : { relativeAltitudeMeters: metadata.relativeAltitudeMeters }),
+  }
+  await atomicJsonWrite(sidecarPath, sidecar)
+}
+
+const runImporter = async () => {
+  const command = process.execPath
+  const script = path.join(webRoot, 'scripts', 'import-media.mjs')
+  const preflight = await execFileAsync(command, [script], { cwd: webRoot, maxBuffer: 4 * 1024 * 1024 })
+  const blockingPattern = /需要处理|缺少日期或分辨率|缺少日期、分辨率或有效坐标|无法读取|找不到国家|找不到城市/
+  if (blockingPattern.test(`${preflight.stdout}\n${preflight.stderr}`)) {
+    const error = new Error('媒体预检发现未解决信息，已停止导入。')
+    error.details = `${preflight.stdout}\n${preflight.stderr}`.trim()
+    throw error
+  }
+  const imported = await execFileAsync(command, [script, '--apply'], { cwd: webRoot, maxBuffer: 8 * 1024 * 1024 })
+  return `${imported.stdout}\n${imported.stderr}`.trim()
+}
+
+const allowedOrigins = (request) => {
+  const origin = request.headers.origin
+  if (!origin) return true
+  try {
+    const parsed = new URL(origin)
+    return (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost')
+      && parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+const isLoopbackRequest = (request) => {
+  const address = request.socket.remoteAddress ?? ''
+  return address === '::1' || address === '127.0.0.1' || address.startsWith('::ffff:127.')
+}
+
+const authorizeWrite = (request) => (
+  isLoopbackRequest(request)
+  && request.headers[editorHeader] === '1'
+  && allowedOrigins(request)
+)
+
+export function travelAtlasLocalEditor() {
+  return {
+    name: 'travelatlas-local-editor',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(async (request, response, next) => {
+        const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+        if (!url.pathname.startsWith('/__travelatlas/editor/')) return next()
+
+        try {
+          if (request.method === 'GET' && url.pathname === '/__travelatlas/editor/state') {
+            if (!isLoopbackRequest(request)) return sendJson(response, 403, { ok: false, error: '仅允许本机编辑会话读取。' })
+            const state = normalizeState(await readJson(editorStatePath, emptyState))
+            return sendJson(response, 200, { ok: true, state })
+          }
+
+          if (request.method === 'GET' && url.pathname === '/__travelatlas/editor/catalog/countries') {
+            if (!isLoopbackRequest(request)) return sendJson(response, 403, { ok: false, error: '仅允许本机编辑会话读取。' })
+            return sendJson(response, 200, {
+              ok: true,
+              results: searchCountryCatalog(url.searchParams.get('q') ?? ''),
+            })
+          }
+
+          if (request.method === 'GET' && url.pathname === '/__travelatlas/editor/catalog/cities') {
+            if (!isLoopbackRequest(request)) return sendJson(response, 403, { ok: false, error: '仅允许本机编辑会话读取。' })
+            const results = await searchCityCatalog(
+              url.searchParams.get('q') ?? '',
+              url.searchParams.get('countryCode') ?? '',
+            )
+            return sendJson(response, 200, { ok: true, results })
+          }
+
+          if (!authorizeWrite(request)) return sendJson(response, 403, { ok: false, error: '仅允许本机编辑会话写入。' })
+
+          if (request.method === 'PUT' && url.pathname === '/__travelatlas/editor/state') {
+            const state = normalizeState(await readJsonBody(request))
+            await atomicJsonWrite(editorStatePath, state)
+            return sendJson(response, 200, { ok: true, state })
+          }
+
+          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/records') {
+            const result = await addTravelRecord(await readJsonBody(request))
+            return sendJson(response, 201, { ok: true, ...result })
+          }
+
+          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/countries') {
+            const result = await addCountry(await readJsonBody(request))
+            return sendJson(response, 201, { ok: true, ...result })
+          }
+
+          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/upload') {
+            const countryId = url.searchParams.get('countryId') ?? ''
+            const cityId = url.searchParams.get('cityId') ?? ''
+            const kind = url.searchParams.get('kind') ?? 'photo'
+            const fileName = url.searchParams.get('fileName') ?? ''
+            if (!['photo', 'panorama360', 'aerialPhoto'].includes(kind)) throw new Error('不支持的媒体类型。')
+
+            const location = await getLocation(countryId, cityId)
+            const countryFolder = safeSegment(location.countryName, '国家名')
+            const cityFolder = safeSegment(location.cityName, '城市名')
+            const cityRoot = path.join(inboxRoot, countryFolder, cityFolder)
+            const mediaFolder = kind === 'photo' ? 'photos' : 'drone'
+            const destination = await reserveDestination(path.join(cityRoot, mediaFolder), fileName)
+            const extension = path.extname(destination).toLowerCase()
+            if (!['.jpg', '.jpeg', '.png', '.webp', '.avif'].includes(extension)) {
+              throw new Error('当前网页编辑器只接收 JPG、PNG、WebP 或 AVIF 图片。')
+            }
+            let droneMetadata
+            if (kind !== 'photo') {
+              const date = url.searchParams.get('date') ?? ''
+              const latText = url.searchParams.get('lat')
+              const lngText = url.searchParams.get('lng')
+              const lat = latText === null || latText === '' ? undefined : Number(latText)
+              const lng = lngText === null || lngText === '' ? undefined : Number(lngText)
+              const altitudeText = url.searchParams.get('altitudeMeters')
+              const altitudeMeters = altitudeText ? Number(altitudeText) : undefined
+              const relativeAltitudeText = url.searchParams.get('relativeAltitudeMeters')
+              const relativeAltitudeMeters = relativeAltitudeText ? Number(relativeAltitudeText) : undefined
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('无人机影像必须填写有效日期。')
+              if ((lat === undefined) !== (lng === undefined)) {
+                throw new Error('经纬度需要同时填写，或同时留空。')
+              }
+              if (
+                (lat !== undefined && (!Number.isFinite(lat) || lat < -90 || lat > 90))
+                || (lng !== undefined && (!Number.isFinite(lng) || lng < -180 || lng > 180))
+              ) {
+                throw new Error('经纬度超出有效范围。')
+              }
+              droneMetadata = {
+                kind,
+                date,
+                lat,
+                lng,
+                altitudeMeters: Number.isFinite(altitudeMeters) ? altitudeMeters : undefined,
+                relativeAltitudeMeters: Number.isFinite(relativeAltitudeMeters) ? relativeAltitudeMeters : undefined,
+                titleZh: url.searchParams.get('titleZh') || `${location.cityName}无人机影像`,
+                titleEn: url.searchParams.get('titleEn') || `${location.cityName} Drone Media`,
+              }
+            }
+
+            const imageMetadata = await writeUpload(request, destination)
+            if (droneMetadata) await updateDroneSidecar(cityRoot, destination, droneMetadata, imageMetadata)
+
+            const fileStats = await stat(destination)
+            return sendJson(response, 201, {
+              ok: true,
+              fileName: path.basename(destination),
+              bytes: fileStats.size,
+            })
+          }
+
+          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/import') {
+            const output = await runImporter()
+            return sendJson(response, 200, { ok: true, output })
+          }
+
+          return sendJson(response, 404, { ok: false, error: '未知的本地编辑接口。' })
+        } catch (error) {
+          const details = typeof error?.details === 'string' ? error.details : undefined
+          return sendJson(response, 400, {
+            ok: false,
+            error: error instanceof Error ? error.message : '本地编辑操作失败。',
+            ...(details ? { details } : {}),
+          })
+        }
+      })
+    },
+  }
+}

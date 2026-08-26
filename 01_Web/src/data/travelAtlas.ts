@@ -1,4 +1,5 @@
 import travelMapSample from './travel-map.sample.json'
+import { orderBySavedIds, travelAtlasEditorState } from './editorState'
 import { getCityCoordinate, getCountryCoordinate } from './geoCoordinates'
 import type { City, CityId, Country, CountryId, JourneyDay, Route, TravelMapRecord, TravelRecordCategory } from '../types/travel'
 
@@ -123,9 +124,21 @@ const slugify = (value: string) =>
     .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
     .replace(/^-|-$/g, '')
 
+const countryKeyForRecord = (record: TravelMapRecord) =>
+  slugify(record.country_en || record.country || 'unknown-country')
+
+const cityKeyForRecord = (record: TravelMapRecord) =>
+  `${countryKeyForRecord(record)}__${slugify(record.city_en || record.city || record.id)}`
+
 const rawRecords = exportData.records.filter((record) => record.status !== 'planned')
 const allRecords = rawRecords.map(normalizeRecordCountry).map(withDisplayCategory)
-const records = allRecords.filter((record) => !record.hiddenFromHome)
+const hiddenEditorCountryIds = new Set(travelAtlasEditorState.hiddenCountryIds)
+const hiddenEditorCityIds = new Set(travelAtlasEditorState.hiddenCityIds)
+const records = allRecords.filter((record) => (
+  !record.hiddenFromHome
+  && !hiddenEditorCountryIds.has(countryKeyForRecord(record))
+  && !hiddenEditorCityIds.has(cityKeyForRecord(record))
+))
 
 const formatDateRange = (items: TravelMapRecord[]) => {
   const dates = items
@@ -185,12 +198,6 @@ const flagEmojiForCode = (code?: string) =>
     ? [...code.toUpperCase()].map((character) => String.fromCodePoint(127397 + character.charCodeAt(0))).join('')
     : undefined
 
-const countryKeyForRecord = (record: TravelMapRecord) =>
-  slugify(record.country_en || record.country || 'unknown-country')
-
-const cityKeyForRecord = (record: TravelMapRecord) =>
-  `${countryKeyForRecord(record)}__${slugify(record.city_en || record.city || record.id)}`
-
 const recordsByCountry = records.reduce(
   (acc, record) => {
     const countryId = countryKeyForRecord(record)
@@ -223,7 +230,7 @@ export const travelAtlasMeta = {
 
 export const hiddenHomeRecords = allRecords.filter((record) => record.hiddenFromHome)
 
-export const countries: Country[] = Object.entries(recordsByCountry).map(([countryId, countryRecords], index) => {
+const recordCountries: Country[] = Object.entries(recordsByCountry).map(([countryId, countryRecords], index) => {
   const first = countryRecords[0]
   const countryCoordinate = getCountryCoordinate(first.country_en || first.country)
   const coordinateRecords = countryRecords
@@ -255,7 +262,10 @@ export const countries: Country[] = Object.entries(recordsByCountry).map(([count
     summary: `${cityNames.length} visited cities collected from Archive export.`,
     memory: tripTitles.length > 0 ? tripTitles.slice(0, 3).join(' / ') : 'Travel memory imported from Archive export.',
     keywords: unique(countryRecords.map((record) => record.region).filter((region): region is string => Boolean(region))).slice(0, 3),
-    cityIds,
+    cityIds: orderBySavedIds(
+      cityIds.map((id) => ({ id })),
+      travelAtlasEditorState.cityOrderByCountry[countryId],
+    ).map(({ id }) => id),
     accent: countryAccent(index),
     flag: flagEmojiForCode(flagCode),
     flagCode,
@@ -263,6 +273,30 @@ export const countries: Country[] = Object.entries(recordsByCountry).map(([count
     records: countryRecords,
   }
 })
+
+const recordCountryIds = new Set(recordCountries.map((country) => country.id))
+const standaloneCountries: Country[] = travelAtlasEditorState.addedCountries
+  .filter((country) => !recordCountryIds.has(country.id) && !hiddenEditorCountryIds.has(country.id))
+  .map((country, index) => ({
+    id: country.id,
+    nameZh: country.nameZh,
+    nameEn: country.nameEn,
+    centerLat: country.centerLat,
+    centerLng: country.centerLng,
+    visitedDateRange: country.visitedDate ?? 'Date unknown',
+    summary: 'Country added locally. Add the first city from City Cards when ready.',
+    memory: 'Awaiting the first city record.',
+    keywords: country.region ? [country.region] : [],
+    cityIds: [],
+    accent: countryAccent(recordCountries.length + index),
+    flag: flagEmojiForCode(country.countryCode),
+    flagCode: country.countryCode.toLowerCase(),
+    missingCoordinates: false,
+    records: [],
+  }))
+const unorderedCountries = [...recordCountries, ...standaloneCountries]
+
+export const countries = orderBySavedIds(unorderedCountries, travelAtlasEditorState.countryOrder)
 
 export const cities: City[] = Object.entries(recordsByCity).map(([cityId, cityRecords]) => {
   const first = cityRecords[0]

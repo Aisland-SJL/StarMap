@@ -349,11 +349,10 @@ async function planFile({ filePath, kind, country, city, metadata = {} }) {
   const metadataReady = !isDrone || (
     typeof metadata.date === 'string'
     && typeof metadata.resolution === 'string'
-    && hasValidPosition(metadata.position)
   )
 
   if (isDrone && !metadataReady) {
-    warnings.push(`${path.relative(inboxRoot, filePath)} 缺少日期、分辨率或有效坐标；会进入目录，但暂不显示为 Drone Media。`)
+    warnings.push(`${path.relative(inboxRoot, filePath)} 缺少日期或分辨率；会进入目录，但暂不显示为 Drone Media。`)
   }
 
   plannedItems.push({
@@ -377,6 +376,8 @@ async function planFile({ filePath, kind, country, city, metadata = {} }) {
     ...(typeof metadata.captureType === 'string' ? { captureType: metadata.captureType } : {}),
     ...(typeof metadata.description === 'string' ? { description: metadata.description } : {}),
     ...(hasValidPosition(metadata.position) ? { position: metadata.position } : {}),
+    ...(typeof metadata.altitudeMeters === 'number' ? { altitudeMeters: metadata.altitudeMeters } : {}),
+    ...(typeof metadata.relativeAltitudeMeters === 'number' ? { relativeAltitudeMeters: metadata.relativeAltitudeMeters } : {}),
     isCover: false,
     status: metadataReady ? 'ready' : 'needsMetadata',
     _sourcePath: filePath,
