@@ -16,7 +16,7 @@ type UpdateCache = {
   release: GitHubRelease | null
 }
 
-const repository = import.meta.env.VITE_GITHUB_REPOSITORY?.trim() || 'Aisland-SJL/TravelAtlas'
+const repository = import.meta.env.VITE_GITHUB_REPOSITORY?.trim() || 'Aisland-SJL/StarMap'
 const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/
 const repositoryConfigured = repositoryPattern.test(repository)
 const currentVersion = packageJson.version

@@ -1,4 +1,4 @@
-# TravelAtlas Web Application
+# StarMap Web Application
 
 This directory contains the runnable React, TypeScript, Vite, and Cesium application.
 
@@ -81,7 +81,7 @@ The public interface deliberately uses neutral copy that a new user can replace 
 
 ## GitHub Release Updates
 
-The official build checks `Aisland-SJL/TravelAtlas` by default. A fork can override the source with:
+The official build checks `Aisland-SJL/StarMap` by default. A fork can override the source with:
 
 ```text
 VITE_GITHUB_REPOSITORY=your-name/your-fork

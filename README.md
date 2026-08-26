@@ -1,6 +1,6 @@
 <p align="center"><b>English</b> · <a href="README.zh.md">简体中文</a></p>
 
-# Travel Atlas
+# StarMap
 
 An open-source, local-first 3D travel atlas for turning places, journeys, photographs, and aerial media into an interactive personal map.
 
@@ -45,7 +45,7 @@ Travel Atlas is built with React, TypeScript, Vite, and Cesium. A clean clone op
 Requirements: Git and a current Node.js LTS release compatible with Vite 8.
 
 ```powershell
-git clone https://github.com/Aisland-SJL/TravelAtlas.git
+git clone https://github.com/Aisland-SJL/StarMap.git
 cd TravelAtlas/01_Web
 npm ci
 Copy-Item .env.example .env.local
@@ -100,7 +100,7 @@ npm run media:check
 
 ## Updates
 
-The bottom-right version button checks the latest [GitHub Release](https://github.com/Aisland-SJL/TravelAtlas/releases) at most once every 12 hours. A newer unseen version activates a breathing light and shows release notes plus a guarded AI-update prompt. It never overwrites your project automatically.
+The bottom-right version button checks the latest [GitHub Release](https://github.com/Aisland-SJL/StarMap/releases) at most once every 12 hours. A newer unseen version activates a breathing light and shows release notes plus a guarded AI-update prompt. It never overwrites your project automatically.
 
 Forks can point the checker at their own Releases by setting `VITE_GITHUB_REPOSITORY=owner/repository`.
 
