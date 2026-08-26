@@ -28,6 +28,8 @@ const droneTypeAliases = new Map([
   ...['video', 'videos', '航拍视频', '视频'].map((name) => [normalizeName(name), 'video']),
 ])
 
+const ignoredControlExtensions = new Set(['.json', '.bak', '.tmp'])
+
 const errors = []
 const warnings = []
 const plannedItems = []
@@ -110,7 +112,7 @@ async function listMediaFiles(target) {
       files.push(...await listMediaFiles(absolutePath))
       continue
     }
-    if (!entry.isFile() || entry.name.toLowerCase().endsWith('.json')) continue
+    if (!entry.isFile() || ignoredControlExtensions.has(path.extname(entry.name).toLowerCase())) continue
     files.push(absolutePath)
   }
 
@@ -228,7 +230,7 @@ function resolveCountry(folderName, countryConfig, locationIndex) {
     return undefined
   }
   if (!match) {
-    errors.push(`找不到国家：${folderName}。目录名需与 TravelAtlas 中英文国家名一致。`)
+    errors.push(`找不到国家：${folderName}。目录名需与 StarMap 中英文国家名一致。`)
     return undefined
   }
   return match
@@ -241,7 +243,7 @@ function resolveCity(folderName, country) {
     return undefined
   }
   if (!match) {
-    errors.push(`在 ${country.nameEn} 中找不到城市：${folderName}。请先把该城市加入 TravelAtlas 数据。`)
+    errors.push(`在 ${country.nameEn} 中找不到城市：${folderName}。请先把该城市加入 StarMap 数据。`)
     return undefined
   }
   return match
@@ -265,6 +267,30 @@ function metadataForFile(metadata, cityRoot, filePath) {
   if (!metadata || typeof metadata !== 'object') return {}
   const relativeKey = toPosix(path.relative(cityRoot, filePath))
   return metadata[relativeKey] ?? metadata[path.basename(filePath)] ?? {}
+}
+
+function resolveMetadataLocation(metadata, fallbackCountry, fallbackCity, locationIndex, filePath) {
+  const countryId = typeof metadata.countryId === 'string' ? metadata.countryId.trim() : ''
+  const cityId = typeof metadata.cityId === 'string' ? metadata.cityId.trim() : ''
+  if (!countryId && !cityId) return { country: fallbackCountry, city: fallbackCity }
+
+  const relativePath = path.relative(inboxRoot, filePath)
+  if (!countryId || !cityId) {
+    errors.push(`${relativePath} 的归属覆盖必须同时填写 countryId 和 cityId。`)
+    return undefined
+  }
+
+  const country = locationIndex.countriesById.get(countryId)
+  if (!country) {
+    errors.push(`${relativePath} 指定了不存在的 countryId：${countryId}`)
+    return undefined
+  }
+  const city = country.citiesById.get(cityId)
+  if (!city) {
+    errors.push(`${relativePath} 指定了不属于 ${country.nameEn} 的 cityId：${cityId}`)
+    return undefined
+  }
+  return { country, city }
 }
 
 function droneKindForFile(filePath, metadata) {
@@ -397,7 +423,7 @@ async function scanPhotos(photosRoot, country, city) {
   }
 }
 
-async function scanDrone(droneRoot, country, city, cityRoot) {
+async function scanDrone(droneRoot, country, city, cityRoot, locationIndex) {
   if (!droneRoot) return
   const cityMetadataPath = path.join(cityRoot, 'media.json')
   const droneMetadataPath = path.join(droneRoot, 'media.json')
@@ -408,19 +434,21 @@ async function scanDrone(droneRoot, country, city, cityRoot) {
 
   for (const filePath of await listMediaFiles(droneRoot)) {
     const fileMetadata = metadataForFile(metadata, cityRoot, filePath)
+    const location = resolveMetadataLocation(fileMetadata, country, city, locationIndex, filePath)
+    if (!location) continue
     await planFile({
       filePath,
       kind: droneKindForFile(filePath, fileMetadata),
-      country,
-      city,
+      country: location.country,
+      city: location.city,
       metadata: fileMetadata,
     })
   }
 }
 
-async function scanCity(cityRoot, country, city) {
+async function scanCity(cityRoot, country, city, locationIndex) {
   const directMedia = (await readdir(cityRoot, { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && !entry.name.toLowerCase().endsWith('.json'))
+    .filter((entry) => entry.isFile() && !ignoredControlExtensions.has(path.extname(entry.name).toLowerCase()))
   if (directMedia.length > 0) {
     errors.push(`${country.nameEn}/${city.nameEn} 根目录有 ${directMedia.length} 个媒体文件；请放入 photos 或 drone。`)
   }
@@ -428,7 +456,7 @@ async function scanCity(cityRoot, country, city) {
   const photosRoot = await findNamedRoot(cityRoot, photoFolderAliases, '普通照片')
   const droneRoot = await findNamedRoot(cityRoot, droneFolderAliases, '无人机')
   await scanPhotos(photosRoot, country, city)
-  await scanDrone(droneRoot, country, city, cityRoot)
+  await scanDrone(droneRoot, country, city, cityRoot, locationIndex)
 
   const allowedFolderNames = new Set([...photoFolderAliases, ...droneFolderAliases])
   for (const entry of await listDirectories(cityRoot)) {
@@ -495,7 +523,7 @@ function printReport(items) {
     return result
   }, {})
 
-  console.log(`TravelAtlas 媒体${shouldApply ? '导入' : '预检'}：${items.length} 个文件`)
+  console.log(`StarMap 媒体${shouldApply ? '导入' : '预检'}：${items.length} 个文件`)
   console.log(`普通照片 ${counts.photo ?? 0} | 360 全景 ${counts.panorama360 ?? 0} | 航拍照片 ${counts.aerialPhoto ?? 0} | 视频 ${counts.video ?? 0}`)
   if (warnings.length > 0) {
     console.log(`\n提醒（${warnings.length}）：`)
@@ -532,7 +560,7 @@ async function main() {
       if (!country) continue
 
       const countryRootMedia = (await readdir(countryRoot, { withFileTypes: true }))
-        .filter((entry) => entry.isFile() && !entry.name.toLowerCase().endsWith('.json'))
+        .filter((entry) => entry.isFile() && !ignoredControlExtensions.has(path.extname(entry.name).toLowerCase()))
       if (countryRootMedia.length > 0) {
         errors.push(`${country.nameEn} 根目录有 ${countryRootMedia.length} 个媒体文件；最小单位是城市，请先建立城市目录。`)
       }
@@ -549,7 +577,7 @@ async function main() {
 
         const city = resolveCity(cityEntry.name, country)
         if (!city) continue
-        await scanCity(cityRoot, country, city)
+        await scanCity(cityRoot, country, city, locationIndex)
       }
     }
   }

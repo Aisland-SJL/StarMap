@@ -39,10 +39,10 @@ When a user mentions uploading, importing, organizing, or adding travel photos o
 
 ## Project Boundary
 
-- This folder is the unique active home of TravelAtlas.
+- This folder is the unique active home of StarMap.
 - The runnable application lives in `01_Web/`; run all npm commands from that directory.
 - Git is rooted at this project folder so code, project documentation, tests, and process records share one history.
-- Do not create a second active TravelAtlas copy.
+- Do not create a second active StarMap copy.
 
 ## Map Architecture
 

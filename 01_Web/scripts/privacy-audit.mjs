@@ -51,11 +51,11 @@ if (droneSource.includes('builtInDroneMediaItems') || /src:\s*['"]\/media\//.tes
 }
 
 if (errors.length > 0) {
-  console.error(`TravelAtlas privacy audit failed (${errors.length}):`)
+  console.error(`StarMap privacy audit failed (${errors.length}):`)
   for (const error of errors) console.error(`\n${error}`)
   process.exitCode = 1
 } else {
-  console.log('TravelAtlas privacy audit passed.')
+  console.log('StarMap privacy audit passed.')
   console.log(`Tracked and unignored public files checked: ${publicFiles.length}`)
   console.log(`Neutral sample records: ${sampleData.records.length}`)
   console.log('Private Inbox, generated media, local catalogs, local travel data, and environment files are outside the tracked public boundary.')
