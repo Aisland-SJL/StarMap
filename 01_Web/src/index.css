@@ -718,6 +718,13 @@ button {
   color: rgba(148, 163, 184, 0.58);
 }
 
+.drone-aerial-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #020617;
+}
+
 .panorama-fullscreen-back {
   position: absolute;
   z-index: 1000;
@@ -4273,11 +4280,11 @@ button {
   pointer-events: none;
 }
 
-.cesium-lab-page .drone-media-item-card > .drone-media-thumbnail-frame > .drone-media-thumbnail-number {
+.cesium-lab-page .drone-media-item-card > .drone-media-thumbnail-number {
   position: absolute;
-  top: 7px;
-  left: 7px;
-  z-index: 2;
+  top: 6px;
+  left: 6px;
+  z-index: 5;
   display: grid;
   width: 31px;
   height: 31px;
@@ -4293,6 +4300,38 @@ button {
   line-height: 1;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
+}
+
+.cesium-lab-page .drone-media-panorama-badge {
+  position: absolute;
+  bottom: 7px;
+  left: 7px;
+  z-index: 2;
+  display: inline-flex;
+  height: 23px;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(165, 243, 252, 0.46);
+  border-radius: 999px;
+  background: rgba(2, 8, 16, 0.62);
+  padding: 0 7px 0 5px;
+  color: rgba(207, 250, 254, 0.94);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(10px) saturate(145%);
+  backdrop-filter: blur(10px) saturate(145%);
+}
+
+.cesium-lab-page .drone-media-panorama-badge svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.55;
 }
 
 .cesium-lab-page .drone-media-view-button {
@@ -5143,6 +5182,12 @@ button {
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
+.atlas-local-editor-form .atlas-local-media-kind {
+  color: rgba(226, 232, 240, 0.92);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .atlas-local-file-picker {
   display: flex;
   min-width: 0;
@@ -5178,17 +5223,36 @@ button {
   border-right: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(15, 23, 42, 0.74);
   padding: 0 10px;
-  color: #e2e8f0;
-  font-weight: 650;
+  color: rgba(226, 232, 240, 0.92);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .atlas-local-file-picker-status {
   flex: 1 1 auto;
   overflow: hidden;
   padding: 0 9px;
-  color: rgba(148, 163, 184, 0.68);
+  color: rgba(148, 163, 184, 0.62);
+  font-size: 12px;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.atlas-local-file-picker-status[data-empty='true'] {
+  color: rgba(148, 163, 184, 0.46);
+}
+
+.theme-night .drone-media-card .atlas-local-file-picker-button {
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.theme-night .drone-media-card .atlas-local-file-picker-status {
+  color: rgba(148, 163, 184, 0.62);
+}
+
+.theme-night .drone-media-card .atlas-local-file-picker-status[data-empty='true'] {
+  color: rgba(148, 163, 184, 0.46);
 }
 
 .atlas-local-file-picker:focus-within {
@@ -5229,6 +5293,19 @@ button {
 .atlas-local-editor-restore:active,
 .atlas-local-editor-delete:active {
   transform: scale(0.98);
+}
+
+.atlas-local-editor-form > .atlas-local-import-submit {
+  min-height: 40px;
+  border-color: rgba(103, 232, 249, 0.52);
+  background: rgba(8, 145, 178, 0.3);
+  color: #ecfeff;
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 8px 22px rgba(8, 145, 178, 0.12);
 }
 
 .atlas-drone-metadata-list {
@@ -5396,6 +5473,7 @@ button {
   right: 6px;
   z-index: 5;
   display: flex;
+  align-items: flex-start;
   gap: 4px;
 }
 

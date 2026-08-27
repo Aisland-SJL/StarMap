@@ -124,15 +124,16 @@ export const uploadLocalMedia = async (upload: LocalMediaUpload) => {
     },
     body: upload.file,
   })
-  return parseResponse<{ fileName: string; bytes: number }>(response)
+  return parseResponse<{ fileName: string; bytes: number; sourcePath: string }>(response)
 }
 
-export const importLocalMedia = async () => {
+export const importLocalMedia = async (sourcePaths: string[] = []) => {
   const response = await fetch('/__travelatlas/editor/import', {
     method: 'POST',
     headers: editorHeaders,
+    body: JSON.stringify({ sourcePaths }),
   })
-  return parseResponse<{ output: string }>(response)
+  return parseResponse<{ output: string; restoredMediaIds: string[] }>(response)
 }
 
 export const deleteHiddenLocalMedia = async (cityId: string, ids: string[]) => {

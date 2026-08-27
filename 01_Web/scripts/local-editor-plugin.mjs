@@ -24,6 +24,13 @@ const userMediaRoot = path.join(webRoot, 'public', 'media', 'user')
 const editorHeader = 'x-travelatlas-local-editor'
 const maxUploadBytes = 250 * 1024 * 1024
 const citySearchDispatcher = new EnvHttpProxyAgent()
+const userMediaContentTypes = new Map([
+  ['.avif', 'image/avif'],
+  ['.jpeg', 'image/jpeg'],
+  ['.jpg', 'image/jpeg'],
+  ['.png', 'image/png'],
+  ['.webp', 'image/webp'],
+])
 
 const emptyState = {
   schemaVersion: 1,
@@ -487,6 +494,108 @@ const isPathInside = (root, target) => {
   return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative)
 }
 
+const normalizeInboxRelativePath = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return undefined
+  const target = path.resolve(inboxRoot, value.trim())
+  if (!isPathInside(inboxRoot, target)) throw new Error('媒体源文件路径超出投递箱范围。')
+  return path.relative(inboxRoot, target).split(path.sep).join('/')
+}
+
+const restoreImportedMedia = async (sourcePaths) => {
+  if (sourcePaths.length === 0) return []
+
+  const requestedSources = new Set(sourcePaths.map((sourcePath) => sourcePath.toLocaleLowerCase('en-US')))
+  const sourceIndex = await readJson(mediaSourceIndexPath, { sourcesById: {} })
+  const importedIds = Object.entries(sourceIndex.sourcesById ?? {})
+    .filter(([, sources]) => Array.isArray(sources) && sources.some(
+      (source) => requestedSources.has(String(source).replaceAll('\\', '/').toLocaleLowerCase('en-US')),
+    ))
+    .map(([id]) => id)
+
+  if (importedIds.length === 0) {
+    throw new Error('文件已经接收，但导入结果没有对应媒体记录。请保留当前页面并查看导入详情。')
+  }
+
+  const catalog = await readJson(mediaCatalogPath, { items: [] })
+  const itemsById = new Map((Array.isArray(catalog.items) ? catalog.items : []).map((item) => [item.id, item]))
+  const importedItems = importedIds.map((id) => itemsById.get(id)).filter(Boolean)
+  if (importedItems.length !== importedIds.length) {
+    throw new Error('导入索引与媒体目录不一致，已停止刷新页面。')
+  }
+
+  const state = normalizeState(await readJson(editorStatePath, emptyState))
+  const nextState = {
+    ...state,
+    mediaOrderByCity: { ...state.mediaOrderByCity },
+    droneOrderByCity: { ...state.droneOrderByCity },
+    hiddenMediaIds: state.hiddenMediaIds.filter((id) => !importedIds.includes(id)),
+    hiddenDroneMediaIds: state.hiddenDroneMediaIds.filter((id) => !importedIds.includes(id)),
+  }
+
+  for (const item of importedItems) {
+    const orderKey = item.kind === 'photo' ? 'mediaOrderByCity' : 'droneOrderByCity'
+    const currentOrder = nextState[orderKey][item.cityId] ?? []
+    nextState[orderKey][item.cityId] = [...currentOrder.filter((id) => id !== item.id), item.id]
+  }
+
+  await atomicJsonWrite(editorStatePath, normalizeState(nextState))
+  return importedIds
+}
+
+const serveUserMedia = async (request, response, pathname) => {
+  if (!isLoopbackRequest(request)) {
+    response.statusCode = 403
+    response.end('Forbidden')
+    return
+  }
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    response.statusCode = 405
+    response.setHeader('allow', 'GET, HEAD')
+    response.end('Method Not Allowed')
+    return
+  }
+
+  let relativePath
+  try {
+    relativePath = decodeURIComponent(pathname.slice('/media/user/'.length))
+  } catch {
+    response.statusCode = 400
+    response.end('Bad Request')
+    return
+  }
+  const target = path.resolve(userMediaRoot, relativePath)
+  if (!isPathInside(userMediaRoot, target)) {
+    response.statusCode = 403
+    response.end('Forbidden')
+    return
+  }
+
+  let fileStats
+  try {
+    fileStats = await stat(target)
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error
+    response.statusCode = 404
+    response.end('Not Found')
+    return
+  }
+  if (!fileStats.isFile()) {
+    response.statusCode = 404
+    response.end('Not Found')
+    return
+  }
+
+  response.statusCode = 200
+  response.setHeader('content-type', userMediaContentTypes.get(path.extname(target).toLowerCase()) ?? 'application/octet-stream')
+  response.setHeader('content-length', String(fileStats.size))
+  response.setHeader('cache-control', 'no-store')
+  if (request.method === 'HEAD') {
+    response.end()
+    return
+  }
+  await pipeline(createReadStream(target), response)
+}
+
 const removeSidecarEntries = async (sourcePaths) => {
   const removalsBySidecar = new Map()
   for (const sourcePath of sourcePaths) {
@@ -607,6 +716,15 @@ export function travelAtlasLocalEditor() {
     configureServer(server) {
       server.middlewares.use(async (request, response, next) => {
         const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+        if (url.pathname.startsWith('/media/user/')) {
+          try {
+            await serveUserMedia(request, response, url.pathname)
+          } catch {
+            if (!response.headersSent) response.statusCode = 500
+            response.end()
+          }
+          return
+        }
         if (!url.pathname.startsWith('/__travelatlas/editor/')) return next()
 
         try {
@@ -709,12 +827,18 @@ export function travelAtlasLocalEditor() {
               ok: true,
               fileName: path.basename(destination),
               bytes: fileStats.size,
+              sourcePath: path.relative(inboxRoot, destination).split(path.sep).join('/'),
             })
           }
 
           if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/import') {
+            const input = await readJsonBody(request)
+            const sourcePaths = isStringArray(input?.sourcePaths)
+              ? [...new Set(input.sourcePaths.map(normalizeInboxRelativePath).filter(Boolean))]
+              : []
             const output = await runImporter()
-            return sendJson(response, 200, { ok: true, output })
+            const restoredMediaIds = await restoreImportedMedia(sourcePaths)
+            return sendJson(response, 200, { ok: true, output, restoredMediaIds })
           }
 
           if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/media/delete') {

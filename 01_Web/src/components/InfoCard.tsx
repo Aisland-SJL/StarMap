@@ -160,11 +160,13 @@ export function InfoCard({ mode, selectedCountryId, selectedCityId, onSelectCity
     setEditorBusy(true)
     setEditorNotice(`正在接收 ${files.length} 张照片…`)
     try {
+      const uploadedSourcePaths: string[] = []
       for (const file of Array.from(files)) {
-        await uploadLocalMedia({ countryId: country.id, cityId: city.id, kind: 'photo', file })
+        const uploaded = await uploadLocalMedia({ countryId: country.id, cityId: city.id, kind: 'photo', file })
+        uploadedSourcePaths.push(uploaded.sourcePath)
       }
       setEditorNotice('照片已进入私有投递箱，正在生成三级网页资源…')
-      await importLocalMedia()
+      await importLocalMedia(uploadedSourcePaths)
       reloadAfterLocalSave()
     } catch (error) {
       setEditorNotice(error instanceof Error ? error.message : '照片导入失败。')

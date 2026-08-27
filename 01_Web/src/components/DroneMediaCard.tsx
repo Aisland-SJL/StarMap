@@ -153,12 +153,13 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
     setBusy(true)
     setNotice(`正在接收 ${fileDrafts.length} 个无人机文件…`)
     try {
+      const uploadedSourcePaths: string[] = []
       for (const draft of fileDrafts) {
         const lat = draft.lat.trim() ? Number(draft.lat) : undefined
         const lng = draft.lng.trim() ? Number(draft.lng) : undefined
         const altitudeMeters = draft.altitudeMeters.trim() ? Number(draft.altitudeMeters) : undefined
         const relativeAltitudeMeters = draft.relativeAltitudeMeters.trim() ? Number(draft.relativeAltitudeMeters) : undefined
-        await uploadLocalMedia({
+        const uploaded = await uploadLocalMedia({
           countryId: city.countryId ?? '',
           cityId: city.id,
           kind: uploadForm.kind,
@@ -171,9 +172,10 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
           titleZh: mediaTitle,
           titleEn: `${city.nameEn} Drone Media`,
         })
+        uploadedSourcePaths.push(uploaded.sourcePath)
       }
       setNotice('文件已进入私有投递箱，正在生成三级网页资源…')
-      await importLocalMedia()
+      await importLocalMedia(uploadedSourcePaths)
       reloadAfterLocalSave()
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '无人机影像导入失败。')
@@ -290,14 +292,14 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
           <form className="atlas-local-editor-form atlas-local-editor-form-dark" onSubmit={uploadDroneFiles}>
             <p>选择文件后会先自动读取日期、GPS 坐标、海拔和相对高度。只有文件没有记录的字段才需要补充；其中仅拍摄日期必填。</p>
             <div className="atlas-local-editor-form-grid">
-              <select value={uploadForm.kind} onChange={(event) => setUploadForm((form) => ({ ...form, kind: event.target.value as 'panorama360' | 'aerialPhoto' }))}>
-                <option value="panorama360">360 全景</option>
+              <select className="atlas-local-media-kind" value={uploadForm.kind} onChange={(event) => setUploadForm((form) => ({ ...form, kind: event.target.value as 'panorama360' | 'aerialPhoto' }))}>
+                <option value="panorama360">360° 全景</option>
                 <option value="aerialPhoto">航拍照片</option>
               </select>
               <label className="atlas-local-file-picker">
                 <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" aria-label="无人机图片" onChange={(event) => void readSelectedFiles(event.target.files)} />
                 <span className="atlas-local-file-picker-button">选择文件</span>
-                <span className="atlas-local-file-picker-status">
+                <span className="atlas-local-file-picker-status" data-empty={fileDrafts.length === 0}>
                   {fileDrafts.length === 0
                     ? '未选取'
                     : fileDrafts.length === 1 ? fileDrafts[0].file.name : `已选取 ${fileDrafts.length} 个文件`}
@@ -351,7 +353,7 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
                 ))}
               </div>
             ) : null}
-            <button type="submit" disabled={busy || panoramaMismatchCount > 0}>确认导入</button>
+            <button className="atlas-local-import-submit" type="submit" disabled={busy || panoramaMismatchCount > 0}>确认导入</button>
           </form>
         ) : null}
 
@@ -446,10 +448,20 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
                   className="drone-media-item-card drone-media-item-card-thumbnail rounded-xl border border-white/65 bg-white/52 p-2 shadow-[0_8px_18px_rgba(15,23,42,0.07)]"
                 >
                   <div className="drone-media-thumbnail-frame">
-                    <img src={item.thumbSrc} alt={`${city.nameEn} drone media ${itemNumber}`} loading="lazy" decoding="async" />
+                    <img src={`${item.thumbSrc}?starmapMedia=${encodeURIComponent(item.id)}`} alt={`${city.nameEn} drone media ${itemNumber}`} loading="lazy" decoding="async" />
                     <span className="drone-media-thumbnail-shade" aria-hidden="true" />
-                    <span className="drone-media-item-number drone-media-thumbnail-number">{itemNumber}</span>
+                    {item.type === 'panorama360' ? (
+                      <span className="drone-media-panorama-badge" aria-label="360° 全景图" title="360° 全景图">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <ellipse cx="12" cy="12" rx="9" ry="4.5" />
+                          <path d="M3 12c0-4.4 4-8 9-8s9 3.6 9 8-4 8-9 8-9-3.6-9-8Z" />
+                          <path d="m7 10-2 2 2 2M17 10l2 2-2 2" />
+                        </svg>
+                        <span>360°</span>
+                      </span>
+                    ) : null}
                   </div>
+                  <span className="drone-media-item-number drone-media-thumbnail-number">{itemNumber}</span>
                   {editing ? (
                     <span className="atlas-local-media-tools" onClick={(event) => event.stopPropagation()}>
                       <span className="atlas-local-editor-drag" aria-label="拖动无人机影像排序"><GripVertical /></span>
@@ -464,7 +476,7 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
                         }}
                       ><X /></span>
                     </span>
-                  ) : item.type === 'panorama360' ? (
+                  ) : (
                     <button
                       type="button"
                       onClick={(event) => {
@@ -476,7 +488,7 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
                       <Maximize2 aria-hidden="true" />
                       View
                     </button>
-                  ) : null}
+                  )}
                 </article>
               )
             })}

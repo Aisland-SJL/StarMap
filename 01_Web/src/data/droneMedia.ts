@@ -10,6 +10,7 @@ export type DroneMediaItem = {
   titleZh: string
   titleEn: string
   src: string
+  previewSrc: string
   thumbSrc: string
   date: string
   resolution: string
@@ -42,6 +43,7 @@ const importedDroneMediaItems: DroneMediaItem[] = importedDroneMediaCatalogItems
     titleZh: item.titleZh ?? item.titleEn ?? item.cityName ?? '无人机影像',
     titleEn: item.titleEn ?? item.titleZh ?? item.cityName ?? 'Drone Media',
     src: getMediaSource(item, 'original'),
+    previewSrc: getMediaSource(item, 'preview'),
     thumbSrc: getMediaSource(item, 'thumb'),
     date: item.date,
     resolution: item.resolution,
