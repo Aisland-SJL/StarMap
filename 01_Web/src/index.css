@@ -5549,10 +5549,168 @@ button {
   }
 }
 
-/* Public-shell dock: three equal icon buttons for sidebars, meteor shower and
-   Release information. The original text label is deliberately removed. */
+/* Public-shell dock: icon buttons for sidebars, imagery source, meteor shower
+   and release information. The original text label is deliberately removed. */
 .atlas-map-controls {
   pointer-events: auto;
+}
+
+.atlas-map-source-switcher {
+  position: relative;
+  display: grid;
+  align-self: stretch;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.atlas-map-source-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: -50px;
+  display: grid;
+  width: 188px;
+  gap: 3px;
+  transform: translateY(0) scale(1);
+  transform-origin: 67px 100%;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  background: rgba(4, 8, 14, 0.56);
+  padding: 7px;
+  color: #e2e8f0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 16px 40px rgba(0, 0, 0, 0.24);
+  opacity: 1;
+  -webkit-backdrop-filter: blur(24px) saturate(1.22);
+  backdrop-filter: blur(24px) saturate(1.22);
+  transition:
+    opacity 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+
+  @starting-style {
+    transform: translateY(4px) scale(0.98);
+    opacity: 0;
+  }
+}
+
+.atlas-map-source-menu > p {
+  margin: 3px 9px 6px;
+  color: rgba(203, 213, 225, 0.58);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.atlas-map-source-menu > button {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) 15px;
+  min-height: 48px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  padding: 7px 9px;
+  color: rgba(226, 232, 240, 0.82);
+  text-align: left;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.atlas-map-source-menu > button[data-active='true'] {
+  border-color: rgba(125, 211, 252, 0.2);
+  background: rgba(125, 211, 252, 0.08);
+  color: #f8fafc;
+}
+
+.atlas-map-source-menu > button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.atlas-map-source-menu > button:disabled {
+  cursor: not-allowed;
+  color: rgba(226, 232, 240, 0.5);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-map-source-menu > button:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.055);
+    color: #f8fafc;
+  }
+}
+
+.atlas-map-source-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.atlas-map-source-status {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #fb7185;
+  box-shadow:
+    0 0 0 1px rgba(251, 113, 133, 0.2),
+    0 0 8px rgba(251, 113, 133, 0.82);
+}
+
+.atlas-map-source-menu > button[data-configured='true'] .atlas-map-source-status {
+  background: #4ade80;
+  box-shadow:
+    0 0 0 1px rgba(74, 222, 128, 0.22),
+    0 0 8px rgba(74, 222, 128, 0.78);
+}
+
+.atlas-map-source-menu strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.atlas-map-source-menu small {
+  overflow: hidden;
+  color: rgba(148, 163, 184, 0.72);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-map-source-menu svg {
+  width: 15px;
+  height: 15px;
+  justify-self: end;
+  color: #38bdf8;
+}
+
+.theme-day .atlas-map-source-menu {
+  border-color: rgba(255, 255, 255, 0.62);
+  background: rgba(235, 246, 253, 0.48);
+  color: #0f172a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+.theme-day .atlas-map-source-menu > button {
+  color: #334155;
+}
+
+.theme-day .atlas-map-source-menu > button:hover,
+.theme-day .atlas-map-source-menu > button[data-active='true'] {
+  color: #0f172a;
+}
+
+.atlas-map-source-button {
+  height: 48px;
+}
+
+.atlas-map-source-button[aria-expanded='true'] {
+  background: rgba(125, 211, 252, 0.08);
+  color: #dff6ff;
 }
 
 .atlas-dock-button,

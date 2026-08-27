@@ -54,7 +54,7 @@ npm run dev -- --host 127.0.0.1 --port 5175
 
 打开 `http://127.0.0.1:5175/`。macOS 与 Linux 用户把 `Copy-Item` 换成 `cp` 即可。
 
-## Cesium ion Token——第一次使用先做这一步
+## 图源凭据——第一次使用先看这里
 
 不配置 token 时，StarMap 仍会使用内置的低清 Natural Earth II 底图启动。需要 Cesium ion 在线全球影像时：
 
@@ -68,7 +68,19 @@ npm run dev -- --host 127.0.0.1 --port 5175
 
 如果希望 AI 带你配置，可以把下面这段话交给 Agent：
 
-> 请先阅读 `AGENTS.md`、`README.zh.md` 和 `01_Web/README.md`，然后引导我创建自己的 Cesium ion token。不要让我把 token 粘贴或展示给你；只告诉我把它填写到 `01_Web/.env.local` 的哪个位置，并且只能确认变量是否存在，不能读取或输出完整值。随后帮我启动本地网站，同时保护所有被忽略的私人数据与媒体。
+> 请先阅读 `AGENTS.md`、`README.zh.md`、`01_Web/AGENTS.md`、`01_Web/README.md` 和 `01_Web/.env.example`。先解释 StarMap 的三种图源，并询问我是需要 Cesium ion、天地图，还是只使用内置本地图源；再引导我申请所选凭据，并配置 `VITE_MAP_SOURCE`、`VITE_CESIUM_ION_TOKEN` 与 `VITE_TIANDITU_TOKEN`。不要让我把完整 token 或 Key 粘贴或展示给你；只告诉我应在被 Git 忽略的 `01_Web/.env.local` 中如何填写，只检查非敏感的“是否存在”和实际地图加载结果。然后帮我启动本地网站并介绍基本操作，同时保护所有被忽略的私人数据与媒体。
+
+## 在 Cesium 与天地图之间切换
+
+StarMap 的 3D 地球引擎仍然是 Cesium，图源切换只改变地球上显示的影像。需要在中国大陆访问时，可前往[天地图开发资源](https://lbs.tianditu.gov.cn/)申请自己的 Key，并把两套凭据同时写入被 Git 忽略的 `01_Web/.env.local`：
+
+```text
+VITE_MAP_SOURCE=tianditu
+VITE_CESIUM_ION_TOKEN=
+VITE_TIANDITU_TOKEN=
+```
+
+`VITE_MAP_SOURCE` 支持 `auto`、`cesium`、`tianditu` 或 `local`。地图底部的“图源”按钮始终列出 Cesium、天地图和本地低清兜底：常亮绿灯表示所需变量已填写（或本地图源已内置），红灯表示在线图源尚未配置且不可选择。这个判断只检查变量是否存在，不会显示或验证凭据内容。浏览器会记住上次选择的可用图源。修改 `.env.local` 后仍需重启开发服务器。两种在线凭据都会随静态网站进入浏览器，因此正式部署时要使用应用专用凭据，并在对应平台限制允许的域名和使用范围。
 
 ## 添加自己的旅程和媒体
 
@@ -96,7 +108,7 @@ npm run privacy:check
 npm run media:check
 ```
 
-`npm run build` 会在 `01_Web/dist/` 生成不带本地编辑能力的静态公开站点。如果需要 ion 在线影像，请在构建前通过托管平台配置 `VITE_CESIUM_ION_TOKEN`。
+`npm run build` 会在 `01_Web/dist/` 生成不带本地编辑能力的静态公开站点。如果需要在线图源，请在构建前通过托管平台配置相应的 `VITE_CESIUM_ION_TOKEN`、`VITE_TIANDITU_TOKEN` 与 `VITE_MAP_SOURCE`。
 
 ## 后续更新
 

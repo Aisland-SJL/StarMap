@@ -54,7 +54,7 @@ npm run dev -- --host 127.0.0.1 --port 5175
 
 Open `http://127.0.0.1:5175/`. macOS and Linux users can replace `Copy-Item` with `cp`.
 
-## Cesium ion token — start here
+## Map credentials — start here
 
 StarMap can start without a token by using its bundled low-resolution Natural Earth II fallback. For Cesium ion online global imagery:
 
@@ -68,7 +68,19 @@ Never commit a token or paste it into an AI chat, issue, screenshot, log, or REA
 
 If you want AI assistance, give your Agent this prompt:
 
-> Read `AGENTS.md`, `README.md`, and `01_Web/README.md`. Guide me through creating my own Cesium ion token before configuring StarMap. Do not ask me to paste or reveal the token. Tell me exactly where I should enter it in `01_Web/.env.local`, verify only that the variable exists, and then start the local site. Preserve all ignored private data and media.
+> Read `AGENTS.md`, `README.md`, `01_Web/AGENTS.md`, `01_Web/README.md`, and `01_Web/.env.example`. Explain the three StarMap imagery sources and ask whether I need Cesium ion, Tianditu, or only the bundled local fallback. Guide me through obtaining any credentials I choose and configuring `VITE_MAP_SOURCE`, `VITE_CESIUM_ION_TOKEN`, and `VITE_TIANDITU_TOKEN`. Never ask me to paste or reveal a complete token or key; tell me exactly where I should enter it in ignored `01_Web/.env.local`, verify only non-secret presence and live map behavior, then start the local site and explain the basic controls. Preserve all ignored private data and media.
+
+## Switch between Cesium and Tianditu
+
+Cesium remains StarMap's 3D globe engine. The source switch changes only the imagery drawn on that globe. Users who need a mainland-China-accessible source can apply for their own key at [Tianditu Developer Resources](https://lbs.tianditu.gov.cn/) and keep both credentials in the ignored `01_Web/.env.local`:
+
+```text
+VITE_MAP_SOURCE=tianditu
+VITE_CESIUM_ION_TOKEN=
+VITE_TIANDITU_TOKEN=
+```
+
+`VITE_MAP_SOURCE` accepts `auto`, `cesium`, `tianditu`, or `local`. The Layers button always lists Cesium, Tianditu, and the bundled local fallback. A steady green light means the required value is present (or the local source is built in); a red light means the online source is not configured and cannot be selected. This check never displays or validates the credential itself. The browser remembers the selected available source. Changing `.env.local` still requires restarting the development server. Both online values are public-client credentials in a built static site, so use app-specific keys and apply the provider's production restrictions.
 
 ## Add your journeys and media
 
@@ -96,7 +108,7 @@ npm run privacy:check
 npm run media:check
 ```
 
-`npm run build` creates a static public-display build in `01_Web/dist/`. Serve that folder with any static host. Configure `VITE_CESIUM_ION_TOKEN` in the hosting platform before building if online ion imagery is required.
+`npm run build` creates a static public-display build in `01_Web/dist/`. Serve that folder with any static host. Configure `VITE_CESIUM_ION_TOKEN`, `VITE_TIANDITU_TOKEN`, and `VITE_MAP_SOURCE` in the hosting platform before building when their corresponding online imagery is required.
 
 ## Updates
 

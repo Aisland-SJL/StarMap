@@ -6,6 +6,7 @@ import { CesiumAtlasGlobe } from './components/CesiumAtlasGlobe'
 import { CountrySelector } from './components/CountrySelector'
 import type { ThemeMode } from './components/DayNightToggle'
 import { MeteorShowerButton } from './components/MeteorShowerButton'
+import { MapSourceSwitcher } from './components/MapSourceSwitcher'
 import { MouseControlGuide } from './components/MouseControlGuide'
 import { DroneMediaCard } from './components/DroneMediaCard'
 import { InfoCard } from './components/InfoCard'
@@ -19,6 +20,8 @@ import { JourneyYearCards } from './components/JourneyYearCards'
 import type { DroneMediaItem } from './data/droneMedia'
 import { hasDroneMedia } from './data/droneMedia'
 import { localEditorAvailable } from './data/editorState'
+import { getInitialMapSource, rememberMapSource } from './data/mapSources'
+import type { MapSourceId } from './data/mapSources'
 import { useReleaseUpdates } from './data/releaseUpdates'
 import { cities, cityById, countries, getCitiesForCountry, journeyDays, travelAtlasMeta } from './data/travelAtlas'
 import type { CityId, CountryId, JourneyDay, SelectionMode } from './types/travel'
@@ -68,6 +71,7 @@ function App() {
   const [activePage, setActivePage] = useState<AtlasPage>('map')
   const [pageBeforeUpdate, setPageBeforeUpdate] = useState<Exclude<AtlasPage, 'about'>>('map')
   const [imageryTuningByTheme, setImageryTuningByTheme] = useState(imageryTuningDefaults)
+  const [mapSource, setMapSource] = useState<MapSourceId>(getInitialMapSource)
   const [journeyViewMode, setJourneyViewMode] = useState<JourneyViewMode>('timeline')
   const [activeDroneMediaCityId, setActiveDroneMediaCityId] = useState<CityId>()
   const [activeDroneMediaItemId, setActiveDroneMediaItemId] = useState<string>()
@@ -291,6 +295,7 @@ function App() {
               imageryBrightness={imageryTuning.brightness}
               imageryContrast={imageryTuning.contrast}
               imagerySaturation={imageryTuning.saturation}
+              mapSource={mapSource}
               selectedCountryId={selectedCountryId}
               selectedCityId={selectedCityId}
               selectionMode={selectionMode}
@@ -384,6 +389,13 @@ function App() {
                 )}
               </span>
             </button>
+            <MapSourceSwitcher
+              value={mapSource}
+              onChange={(source) => {
+                setMapSource(source)
+                rememberMapSource(source)
+              }}
+            />
             <MeteorShowerButton />
             <ReleaseUpdateButton
               active={activePage === 'about'}

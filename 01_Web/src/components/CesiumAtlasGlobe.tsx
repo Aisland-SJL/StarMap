@@ -8,15 +8,11 @@ import {
   Color,
   EllipsoidGeodesic,
   HeadingPitchRange,
-  Ion,
   LabelStyle,
   Math as CesiumMath,
   PolylineOutlineMaterialProperty,
   SceneTransforms,
-  TileMapServiceImageryProvider,
   Viewer as CesiumViewer,
-  buildModuleUrl,
-  createWorldImageryAsync,
 } from 'cesium'
 import {
   Entity,
@@ -32,32 +28,21 @@ import {
 import type { CesiumComponentRef } from 'resium'
 import { droneMediaById, droneMediaItems } from '../data/droneMedia'
 import type { DroneMediaItem } from '../data/droneMedia'
+import { createMapSourceLayers } from '../data/mapSources'
+import type { MapSourceId } from '../data/mapSources'
 import { cities, cityById, countries, countryById, journeyDays, routes, travelAtlasDisplay } from '../data/travelAtlas'
 import type { City, CityId, CountryId, SelectionMode } from '../types/travel'
 import { CesiumConstellationSky } from './CesiumConstellationSky'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 
-const ionToken = import.meta.env.VITE_CESIUM_ION_TOKEN
-
-if (ionToken) {
-  Ion.defaultAccessToken = ionToken
-}
-
-const createLocalImagery = () => TileMapServiceImageryProvider.fromUrl(
-  buildModuleUrl('Assets/Textures/NaturalEarthII'),
-)
-
 const maxCesiumDevicePixelRatio = 2
-
-const atlasImageryProvider = ionToken
-  ? createWorldImageryAsync().catch(createLocalImagery)
-  : createLocalImagery()
 
 type CesiumAtlasGlobeProps = {
   hoveredCountryId?: CountryId
   imageryBrightness: number
   imageryContrast: number
   imagerySaturation: number
+  mapSource: MapSourceId
   selectedCountryId?: CountryId
   selectedCityId?: CityId
   selectionMode: SelectionMode
@@ -511,6 +496,7 @@ export function CesiumAtlasGlobe({
   imageryBrightness,
   imageryContrast,
   imagerySaturation,
+  mapSource,
   selectedCountryId,
   selectedCityId,
   selectionMode,
@@ -544,6 +530,7 @@ export function CesiumAtlasGlobe({
   const selectedCountry = selectedCountryId ? countryById[selectedCountryId] : undefined
   const selectedCity = selectedCityId ? cityById[selectedCityId] : undefined
   const selectedAccent = selectedCountry?.accent ?? '#38bdf8'
+  const mapSourceLayers = useMemo(() => createMapSourceLayers(mapSource), [mapSource])
 
   const drawCursorTrail = useCallback((now: number) => {
     const canvas = cursorTrailRef.current
@@ -1501,6 +1488,7 @@ export function CesiumAtlasGlobe({
       data-visible-city-count={visibleCityIds?.size ?? mappedCities.length}
       data-visible-route-count={visibleRouteIds?.size ?? mappedRoutes.length}
       data-active-route-pairs={activeRoutePairs}
+      data-map-source={mapSource}
     >
       <Viewer
         ref={captureViewer}
@@ -1520,12 +1508,23 @@ export function CesiumAtlasGlobe({
         useBrowserRecommendedResolution={false}
       >
         <ImageryLayer
-          imageryProvider={atlasImageryProvider}
+          key={`${mapSource}-base`}
+          imageryProvider={mapSourceLayers.base}
           brightness={imageryBrightness}
           contrast={imageryContrast}
           saturation={imagerySaturation}
           show={showMapContent}
         />
+        {mapSourceLayers.labels ? (
+          <ImageryLayer
+            key={`${mapSource}-labels`}
+            imageryProvider={mapSourceLayers.labels}
+            brightness={imageryBrightness}
+            contrast={imageryContrast}
+            saturation={imagerySaturation}
+            show={showMapContent}
+          />
+        ) : null}
         <Scene backgroundColor={Color.fromCssColorString(isNight ? '#010409' : '#dbeafe')} />
         <CesiumGlobe
           baseColor={Color.fromCssColorString(isNight ? '#07111f' : '#cbd5e1')}

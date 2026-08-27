@@ -73,9 +73,15 @@ For local development, copy `.env.example` to the ignored `.env.local` and enter
 
 A Vite client variable is excluded from Git but is still observable by users of the built website. Use separate development and production tokens, keep only the public `assets:read` permission and required assets, restrict the production token to the final Allowed URLs, monitor per-token usage, and rotate only the affected token when necessary. Both tokens consume the same ion account quota; separation provides control and diagnostics, not additional quota.
 
+## Multiple Imagery Sources
+
+StarMap uses Cesium as its 3D engine and can draw imagery from Cesium ion, Tianditu, or the bundled Natural Earth II fallback. Configure both online credentials in `.env.local` when needed, then choose the initial source with `VITE_MAP_SOURCE=auto|cesium|tianditu|local`. `auto` keeps the existing priority of Cesium, then Tianditu, then local fallback.
+
+Tianditu is integrated through Cesium's WMTS imagery provider as an imagery base layer plus a Chinese annotation layer. The bottom map dock always shows a Layers button and all three source rows. Cesium and Tianditu use a steady green status light when their environment value is present and a red light when it is absent; the bundled local fallback is always green. Unconfigured online rows remain visible but disabled. The control stores the user's available selection in browser local storage and never asks for, displays, writes, or validates credential contents. Production deployments must define the selected variables before the static build.
+
 ## Public Interface Defaults
 
-The public template uses the neutral `StarMap` identity. Its enlarged primary navigation contains only Map and Journey. The document language defaults to `zh-CN`; no Chinese/English selector is rendered. The center-bottom dock contains three equal icon buttons: hide/show sidebars, summon a meteor shower, and open version updates. The meteor button is a single-click action rather than a toggle: it directly reuses the previously approved implementation to summon a dense three-second shower with its original trajectories, luminous heads, fading tails, timing, and density.
+The public template uses the neutral `StarMap` identity. Its enlarged primary navigation contains only Map and Journey. The document language defaults to `zh-CN`; no Chinese/English selector is rendered. The center-bottom dock contains icon buttons for hide/show sidebars, map-source selection, summon a meteor shower, and version updates. The meteor button is a single-click action rather than a toggle: it directly reuses the previously approved implementation to summon a dense three-second shower with its original trajectories, luminous heads, fading tails, timing, and density.
 
 The public interface deliberately uses neutral copy that a new user can replace with their own identity.
 

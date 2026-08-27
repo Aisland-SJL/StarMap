@@ -15,17 +15,17 @@ Missing MediaLab parent files are expected in a standalone clone and are not a b
 
 ## Fast Task Routing
 
-### Cesium ion token, map access, or deployment
+### Map imagery credentials, access, or deployment
 
-When a user asks about Cesium ion, tokens, missing online imagery, open-source setup, or deployment:
+When a user asks about Cesium ion, Tianditu, tokens, keys, missing imagery, open-source setup, source switching, or deployment:
 
-1. Explain the two supported states first: no token keeps StarMap runnable with bundled low-resolution Natural Earth II imagery; an ion token enables online global imagery and consumes the deploying account's quota.
-2. Distinguish roles. Ordinary visitors use the deployed site's configuration and do not obtain a token. Every person who clones and deploys StarMap supplies an app-specific token from their own ion account; never reuse or distribute the original author's token.
-3. Never ask the user to paste a complete token into chat, and never read, echo, screenshot, log, copy, or store its value. Guide the user to enter it directly into ignored `01_Web/.env.local` for development or the hosting platform's environment settings for production.
-4. Treat `VITE_CESIUM_ION_TOKEN` as a public-client credential: keeping it out of Git prevents repository disclosure, but a built static website necessarily exposes it to browser requests. Do not describe a Vite environment variable as a server-side secret.
-5. Recommend separate development and production tokens from the same account. Explain that they share one account quota; separation exists for different Allowed URLs, per-token usage attribution, independent rotation, and limited revocation impact.
-6. For production, require an app-specific token with only `assets:read`, only the required assets, and exact Allowed URLs for the final canonical domain. If the final domain or deployment target is unknown, explain the preparation but do not invent restrictions or request a production token yet.
-7. When checking configuration, verify only file presence, Git-ignore coverage, or a masked/non-secret health result. Never inspect or report the complete value.
+1. Explain the three supported sources first: bundled Natural Earth II always works at low resolution; Cesium ion enables online global imagery; Tianditu provides an alternative online source with Chinese labels. Cesium remains the 3D globe engine in every state.
+2. Distinguish roles. Ordinary visitors use the deployed site's configuration. Every person who clones and deploys StarMap supplies their own provider credentials; never reuse or distribute the original author's values.
+3. Never ask the user to paste a complete token or key into chat, and never read, echo, screenshot, log, copy, or store it. Guide direct entry into ignored `01_Web/.env.local` for development or the hosting platform's environment settings for production.
+4. Document `VITE_MAP_SOURCE`, `VITE_CESIUM_ION_TOKEN`, and `VITE_TIANDITU_TOKEN` from `01_Web/.env.example`. `VITE_MAP_SOURCE` accepts `auto`, `cesium`, `tianditu`, or `local`; `auto` chooses the first configured online source and then the local fallback.
+5. Treat both online values as public-client credentials: keeping them out of Git prevents repository disclosure, but a built static website necessarily exposes them to browser requests. Production safety comes from app-specific credentials plus each provider's URL, asset, scope, quota, monitoring, and rotation controls.
+6. Recommend separate development and production credentials. Do not invent production restrictions while the final domain or provider requirements are unknown.
+7. The source menu's green light means only that the required environment variable is non-empty; it does not prove that a credential is valid or authorized. Verify live imagery behavior separately without inspecting or reporting the value.
 
 ### Personal photo or drone-media import
 

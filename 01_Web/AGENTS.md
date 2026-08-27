@@ -36,14 +36,14 @@ npm run dev -- --host 127.0.0.1
 
 端口 5174 被占用时，使用 5175；不要停止其他项目的服务。
 
-## Cesium ion Token Boundary
+## Imagery Source Credential Boundary
 
-- A missing `VITE_CESIUM_ION_TOKEN` is a supported state: StarMap must remain runnable with the bundled low-resolution Natural Earth II map.
-- Online global imagery uses the token and quota of the person who develops or deploys that copy. Ordinary website visitors do not configure tokens; open-source users must never inherit the original author's token.
-- Never ask for, read, echo, screenshot, log, copy, or store a complete token. The user enters development values directly into ignored `.env.local` and production values directly into the hosting platform.
-- A Vite environment variable stays out of Git but is observable in the built browser application. Production safety comes from an app-specific token, `assets:read` only, required-asset selection, exact Allowed URLs, monitoring, and rotation.
-- Development and production tokens share the same ion account quota. Keep them separate for environment-specific restrictions, usage attribution, independent rotation, and smaller revocation impact.
-- Do not create or configure a production token until the final deployment domain is known. Verification may check only presence, ignore coverage, masked output, and map behavior; never inspect the full value.
+- StarMap supports Cesium ion imagery, Tianditu imagery with Chinese labels, and the bundled low-resolution Natural Earth II fallback. Cesium remains the 3D engine; switching sources changes imagery, not the globe implementation.
+- A missing online credential is supported. Open-source users provide their own `VITE_CESIUM_ION_TOKEN` and/or `VITE_TIANDITU_TOKEN`; ordinary visitors use the deployed site's configuration and never inherit the original author's values.
+- Never ask for, read, echo, screenshot, log, copy, or store a complete token or key. The user enters development values directly into ignored `.env.local` and production values directly into the hosting platform.
+- Use `VITE_MAP_SOURCE=auto|cesium|tianditu|local` to select the initial source. The browser may remember a later valid choice. A green source-menu light confirms only a non-empty variable, not validity, quota, permissions, or network reachability.
+- Both Vite environment values stay out of Git but are observable in a built static browser application. Use app-specific development and production credentials with provider-supported URL, asset, scope, quota, monitoring, and rotation controls.
+- Verification may check only file presence, ignore coverage, non-secret status, and actual map behavior; never inspect or report the full value.
 
 ## Primary Map Implementation
 
