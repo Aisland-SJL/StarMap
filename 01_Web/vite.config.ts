@@ -8,4 +8,12 @@ import { travelAtlasLocalEditor } from './scripts/local-editor-plugin.mjs'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [travelAtlasLocalEditor(), react(), tailwindcss(), cesium()],
+  server: {
+    watch: {
+      ignored: [
+        '**/public/media/user/**',
+        '**/src/data/generated/**',
+      ],
+    },
+  },
 })

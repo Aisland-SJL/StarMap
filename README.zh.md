@@ -102,6 +102,8 @@ npm run media:check
 
 底部右侧的版本按钮最多每 12 小时检查一次最新 [GitHub Release](https://github.com/Aisland-SJL/StarMap/releases)。发现未读新版本后，按钮会显示呼吸灯；更新页会展示公告、版本说明和一段安全的 AI 更新指令。网站不会自动覆盖你的项目。
 
+该按钮支持反选：第一次点击进入更新页，再次点击会回到此前使用的 Map 或 Journey 页面。
+
 Fork 用户可以通过 `VITE_GITHUB_REPOSITORY=owner/repository` 改为检查自己的 Release。
 
 ## 目录说明
@@ -111,7 +113,6 @@ Fork 用户可以通过 `VITE_GITHUB_REPOSITORY=owner/repository` 改为检查�
 | `01_Web/` | React、TypeScript、Vite 与 Cesium 应用 |
 | `02_Assets/MediaInbox/` | 私有且保留源文件的媒体入口模板 |
 | `03_Reference/` | 架构、隐私与媒体工作流说明 |
-| `04_Process/` | 设计和实施记录 |
 | `05_Test/` | 验证说明 |
 
 ## 隐私与安全

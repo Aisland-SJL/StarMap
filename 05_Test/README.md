@@ -15,7 +15,7 @@ npm run build
 
 - Map opens with Cesium imagery or the configured fallback.
 - Country and city selectors update camera focus and InfoCard content.
-- Map and Journey navigation works, and the bottom version button opens the update page.
+- Map and Journey navigation works; the bottom version button opens the update page and a second click returns to the previously active Map or Journey view.
 - Journey Year Cards and Timeline switch correctly.
 - A city with local drone records opens its Drone Media entries and 360 viewer.
 - Short viewport heights keep the Drone Media card readable while Memory Cards remain internally scrollable.

@@ -507,7 +507,14 @@ async function applyPlan(items) {
     }
   }
 
-  const publicItems = items.map(({ _sourcePath, _outputPath, _outputDirectory, _derivatives, ...item }) => item)
+  const publicItems = items.map((item) => {
+    const publicItem = { ...item }
+    delete publicItem._sourcePath
+    delete publicItem._outputPath
+    delete publicItem._outputDirectory
+    delete publicItem._derivatives
+    return publicItem
+  })
   await mkdir(path.dirname(catalogPath), { recursive: true })
   await writeFile(catalogPath, `${JSON.stringify({
     schemaVersion: 2,

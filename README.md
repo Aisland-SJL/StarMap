@@ -102,6 +102,8 @@ npm run media:check
 
 The bottom-right version button checks the latest [GitHub Release](https://github.com/Aisland-SJL/StarMap/releases) at most once every 12 hours. A newer unseen version activates a breathing light and shows release notes plus a guarded AI-update prompt. It never overwrites your project automatically.
 
+The button is reversible: click once to open the update page, then click it again to return to the Map or Journey view you were using.
+
 Forks can point the checker at their own Releases by setting `VITE_GITHUB_REPOSITORY=owner/repository`.
 
 ## Project layout
@@ -111,7 +113,6 @@ Forks can point the checker at their own Releases by setting `VITE_GITHUB_REPOSI
 | `01_Web/` | React, TypeScript, Vite, and Cesium application |
 | `02_Assets/MediaInbox/` | Private, source-preserving media intake template |
 | `03_Reference/` | Architecture, privacy, and media workflow references |
-| `04_Process/` | Design and implementation records |
 | `05_Test/` | Verification guidance |
 
 ## Privacy and security

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint src vite.config.ts",
+    "lint": "eslint src scripts vite.config.ts",
     "media:check": "node scripts/import-media.mjs",
     "media:import": "node scripts/import-media.mjs --apply",
     "privacy:check": "git -C .. ls-files --cached --others --exclude-standard -z | node scripts/privacy-audit.mjs --manifest-stdin",

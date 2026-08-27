@@ -255,7 +255,7 @@ const searchCityCatalog = async (query, countryCode) => {
     const response = await proxyAwareFetch(url, {
       dispatcher: citySearchDispatcher,
       headers: {
-        'user-agent': 'TravelAtlas-LocalEditor/1.0 (local-first travel atlas editor)',
+        'user-agent': 'StarMap-LocalEditor/1.0 (local-first travel atlas editor)',
         referer: 'http://127.0.0.1/',
       },
     })
@@ -383,6 +383,7 @@ const addTravelRecord = async (input) => {
 }
 
 const safeSegment = (value, label) => {
+  // eslint-disable-next-line no-control-regex -- Windows file names must reject ASCII control characters.
   const cleaned = String(value ?? '').trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')
   if (!cleaned || cleaned === '.' || cleaned === '..') throw new Error(`${label}无效。`)
   return cleaned.slice(0, 120)

@@ -89,6 +89,8 @@ VITE_GITHUB_REPOSITORY=your-name/your-fork
 
 The app compares its `package.json` version with the latest GitHub Release at most once every 12 hours. An unseen newer Release gives the bottom update button a breathing-light signal. Its full update page contains the update guide, Release announcement, version notes, and a guarded AI-update prompt the user can copy. It never downloads code or overwrites local files automatically.
 
+The update button is a reversible page control: its first click opens the update page, and its next click returns to the exact Map or Journey page that was active before.
+
 For each public update, bump the package version, create a matching semantic-version Release such as `v0.2.0`, and describe any migration steps in the Release notes. AI-assisted updates must merge around ignored environment files, private overlays, personal media, and uncommitted work, then run the project's required checks.
 
 ## Architecture
