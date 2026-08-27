@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream } from 'node:fs'
-import { access, copyFile, mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { access, copyFile, mkdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
@@ -16,8 +16,11 @@ const projectRoot = path.resolve(webRoot, '..')
 const generatedRoot = path.join(webRoot, 'src', 'data', 'generated')
 const editorStatePath = path.join(generatedRoot, 'editor-state.local.json')
 const localTravelMapPath = path.join(generatedRoot, 'travel-map.local.json')
+const mediaCatalogPath = path.join(generatedRoot, 'user-media.local.json')
+const mediaSourceIndexPath = path.join(generatedRoot, 'media-source-index.local.json')
 const sampleTravelMapPath = path.join(webRoot, 'src', 'data', 'travel-map.sample.json')
 const inboxRoot = path.join(projectRoot, '02_Assets', 'MediaInbox')
+const userMediaRoot = path.join(webRoot, 'public', 'media', 'user')
 const editorHeader = 'x-travelatlas-local-editor'
 const maxUploadBytes = 250 * 1024 * 1024
 const citySearchDispatcher = new EnvHttpProxyAgent()
@@ -399,7 +402,21 @@ const reserveDestination = async (directory, originalName) => {
   throw new Error('同名文件过多，请先整理文件名。')
 }
 
-const writeUpload = async (request, destination) => {
+const orientedImageDimensions = (metadata) => {
+  const orientation = metadata.orientation ?? 1
+  const swapsAxes = orientation >= 5 && orientation <= 8
+  const width = swapsAxes ? metadata.height : metadata.width
+  const height = swapsAxes ? metadata.width : metadata.height
+  return width && height ? { width, height } : undefined
+}
+
+const isLikelyEquirectangularPanorama = (dimensions) => {
+  if (!dimensions) return false
+  const ratio = dimensions.width / dimensions.height
+  return ratio >= 1.9 && ratio <= 2.1
+}
+
+const writeUpload = async (request, destination, kind) => {
   const contentLength = Number(request.headers['content-length'] ?? 0)
   if (!Number.isFinite(contentLength) || contentLength <= 0) throw new Error('没有收到文件内容。')
   if (contentLength > maxUploadBytes) throw new Error('单个文件不能超过 250 MiB。')
@@ -415,6 +432,10 @@ const writeUpload = async (request, destination) => {
     await pipeline(request, createWriteStream(temporaryPath, { flags: 'wx' }))
     const imageMetadata = await sharp(temporaryPath).metadata()
     if (!imageMetadata.width || !imageMetadata.height) throw new Error('无法读取图片尺寸或文件内容无效。')
+    const dimensions = orientedImageDimensions(imageMetadata)
+    if (kind === 'panorama360' && !isLikelyEquirectangularPanorama(dimensions)) {
+      throw new Error(`所选图片为 ${dimensions?.width ?? imageMetadata.width} × ${dimensions?.height ?? imageMetadata.height}，不是常见的 2:1 等距柱状全景图。请改选“航拍照片”，或上传正确的 360 全景图。`)
+    }
     await mkdir(path.dirname(destination), { recursive: true })
     await pipeline(createReadStream(temporaryPath), createWriteStream(destination, { flags: 'wx' }))
     return imageMetadata
@@ -459,6 +480,101 @@ const runImporter = async () => {
   }
   const imported = await execFileAsync(command, [script, '--apply'], { cwd: webRoot, maxBuffer: 8 * 1024 * 1024 })
   return `${imported.stdout}\n${imported.stderr}`.trim()
+}
+
+const isPathInside = (root, target) => {
+  const relative = path.relative(root, target)
+  return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
+const removeSidecarEntries = async (sourcePaths) => {
+  const removalsBySidecar = new Map()
+  for (const sourcePath of sourcePaths) {
+    const mediaFolder = path.dirname(sourcePath)
+    const cityRoot = path.dirname(mediaFolder)
+    const sidecarPath = path.join(cityRoot, 'media.json')
+    const relativeKey = path.posix.join(path.basename(mediaFolder), path.basename(sourcePath)).toLocaleLowerCase('en-US')
+    removalsBySidecar.set(sidecarPath, new Set([...(removalsBySidecar.get(sidecarPath) ?? []), relativeKey]))
+  }
+
+  for (const [sidecarPath, relativeKeys] of removalsBySidecar) {
+    if (!await exists(sidecarPath)) continue
+    const sidecar = await readJson(sidecarPath, {})
+    let changed = false
+    for (const key of Object.keys(sidecar)) {
+      const normalizedKey = key.replaceAll('\\', '/').toLocaleLowerCase('en-US')
+      if (!relativeKeys.has(normalizedKey)) continue
+      delete sidecar[key]
+      changed = true
+    }
+    if (changed) await atomicJsonWrite(sidecarPath, sidecar)
+  }
+}
+
+const deleteHiddenDroneMedia = async (input) => {
+  const cityId = typeof input?.cityId === 'string' ? input.cityId.trim() : ''
+  const ids = isStringArray(input?.ids) ? [...new Set(input.ids)] : []
+  if (!cityId || ids.length === 0) throw new Error('没有可删除的隐藏影像。')
+
+  const state = normalizeState(await readJson(editorStatePath, emptyState))
+  const hiddenIds = new Set(state.hiddenDroneMediaIds)
+  const catalog = await readJson(mediaCatalogPath, { items: [] })
+  const catalogItems = Array.isArray(catalog.items) ? catalog.items : []
+  const itemsById = new Map(catalogItems.map((item) => [item.id, item]))
+  for (const id of ids) {
+    const item = itemsById.get(id)
+    if (!hiddenIds.has(id) || item?.cityId !== cityId || !['panorama360', 'aerialPhoto'].includes(item?.kind)) {
+      throw new Error('只能彻底删除当前城市中已经隐藏的无人机影像。')
+    }
+  }
+
+  let sourceIndex = await readJson(mediaSourceIndexPath, { sourcesById: {} })
+  if (ids.some((id) => !Array.isArray(sourceIndex.sourcesById?.[id]))) {
+    await runImporter()
+    sourceIndex = await readJson(mediaSourceIndexPath, { sourcesById: {} })
+  }
+
+  const sourcePaths = []
+  for (const id of ids) {
+    const relativeSources = sourceIndex.sourcesById?.[id]
+    if (!Array.isArray(relativeSources) || relativeSources.length === 0) {
+      throw new Error(`找不到影像 ${id} 对应的投递箱原图，已停止删除。`)
+    }
+    for (const relativeSource of relativeSources) {
+      const sourcePath = path.resolve(inboxRoot, relativeSource)
+      if (!isPathInside(inboxRoot, sourcePath)) throw new Error('影像源文件路径超出投递箱范围，已停止删除。')
+      sourcePaths.push(sourcePath)
+    }
+  }
+
+  let deletedSourceFiles = 0
+  for (const sourcePath of sourcePaths) {
+    try {
+      await unlink(sourcePath)
+      deletedSourceFiles += 1
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error
+    }
+  }
+  await removeSidecarEntries(sourcePaths)
+
+  for (const id of ids) {
+    const item = itemsById.get(id)
+    const generatedFile = path.resolve(webRoot, 'public', String(item.src).replace(/^\/+/, ''))
+    const generatedDirectory = path.dirname(generatedFile)
+    if (!isPathInside(userMediaRoot, generatedDirectory)) throw new Error('生成文件路径超出用户媒体目录，已停止删除。')
+    await rm(generatedDirectory, { recursive: true, force: true })
+  }
+
+  const nextState = normalizeState({
+    ...state,
+    hiddenDroneMediaIds: state.hiddenDroneMediaIds.filter((id) => !ids.includes(id)),
+    droneOrderByCity: Object.fromEntries(Object.entries(state.droneOrderByCity)
+      .map(([key, value]) => [key, value.filter((id) => !ids.includes(id))])),
+  })
+  await atomicJsonWrite(editorStatePath, nextState)
+  const output = await runImporter()
+  return { deletedIds: ids, deletedSourceFiles, output }
 }
 
 const allowedOrigins = (request) => {
@@ -585,7 +701,7 @@ export function travelAtlasLocalEditor() {
               }
             }
 
-            const imageMetadata = await writeUpload(request, destination)
+            const imageMetadata = await writeUpload(request, destination, kind)
             if (droneMetadata) await updateDroneSidecar(cityRoot, destination, droneMetadata, imageMetadata)
 
             const fileStats = await stat(destination)
@@ -599,6 +715,11 @@ export function travelAtlasLocalEditor() {
           if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/import') {
             const output = await runImporter()
             return sendJson(response, 200, { ok: true, output })
+          }
+
+          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/media/delete') {
+            const result = await deleteHiddenDroneMedia(await readJsonBody(request))
+            return sendJson(response, 200, { ok: true, ...result })
           }
 
           return sendJson(response, 404, { ok: false, error: '未知的本地编辑接口。' })

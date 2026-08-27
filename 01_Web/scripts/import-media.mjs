@@ -11,6 +11,7 @@ const projectRoot = path.resolve(webRoot, '..')
 const inboxRoot = path.join(projectRoot, '02_Assets', 'MediaInbox')
 const outputRoot = path.join(webRoot, 'public', 'media', 'user')
 const catalogPath = path.join(webRoot, 'src', 'data', 'generated', 'user-media.local.json')
+const sourceIndexPath = path.join(webRoot, 'src', 'data', 'generated', 'media-source-index.local.json')
 const localTravelDataPath = path.join(webRoot, 'src', 'data', 'generated', 'travel-map.local.json')
 const sampleTravelDataPath = path.join(webRoot, 'src', 'data', 'travel-map.sample.json')
 const shouldApply = process.argv.includes('--apply')
@@ -72,6 +73,12 @@ function dimensionsInside(width, height, maxEdge) {
     width: Math.max(1, Math.round(width * scale)),
     height: Math.max(1, Math.round(height * scale)),
   }
+}
+
+function isLikelyEquirectangularPanorama(dimensions) {
+  if (!dimensions?.width || !dimensions?.height) return false
+  const ratio = dimensions.width / dimensions.height
+  return ratio >= 1.9 && ratio <= 2.1
 }
 
 async function pathExists(target) {
@@ -354,6 +361,12 @@ async function planFile({ filePath, kind, country, city, metadata = {} }) {
       return
     }
 
+
+    if (kind === 'panorama360' && !isLikelyEquirectangularPanorama(dimensions)) {
+      errors.push(`${path.relative(inboxRoot, filePath)} 是 ${dimensions.width} × ${dimensions.height}，不是常见的 2:1 等距柱状全景图；请在 media.json 中改为 aerialPhoto，或换用正确的 360 全景图。`)
+      return
+    }
+
     const thumbDimensions = dimensionsInside(dimensions.width, dimensions.height, 640)
     const previewDimensions = dimensionsInside(dimensions.width, dimensions.height, 2400)
     variants = {
@@ -483,7 +496,7 @@ function markCovers(items) {
   }
 }
 
-async function applyPlan(items) {
+async function applyPlan(items, allItems) {
   for (const item of items) {
     await mkdir(item._outputDirectory, { recursive: true })
     try {
@@ -521,6 +534,17 @@ async function applyPlan(items) {
     generatedAt: new Date().toISOString(),
     privacyLevel: 'local-only',
     items: publicItems,
+  }, null, 2)}\n`, 'utf8')
+
+  const sourcesById = allItems.reduce((result, item) => {
+    const sourcePath = toPosix(path.relative(inboxRoot, item._sourcePath))
+    result[item.id] = [...new Set([...(result[item.id] ?? []), sourcePath])]
+    return result
+  }, {})
+  await writeFile(sourceIndexPath, `${JSON.stringify({
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    sourcesById,
   }, null, 2)}\n`, 'utf8')
 }
 
@@ -603,9 +627,9 @@ async function main() {
   }
 
   if (shouldApply) {
-    await applyPlan(uniqueItems)
+    await applyPlan(uniqueItems, plannedItems)
     console.log(`\n已生成本地目录：${path.relative(projectRoot, catalogPath)}`)
-    console.log('重新启动本地预览后，普通城市照片与完整元数据的 Drone Media 会自动出现。')
+    console.log('开发预览会自动刷新媒体目录；若页面未更新，请手动刷新一次。')
   }
 }
 

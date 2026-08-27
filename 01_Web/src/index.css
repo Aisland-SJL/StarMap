@@ -5143,13 +5143,78 @@ button {
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
+.atlas-local-file-picker {
+  display: flex;
+  min-width: 0;
+  height: 34px;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 9px;
+  background: rgba(2, 8, 16, 0.66);
+  cursor: pointer;
+}
+
+.atlas-local-file-picker input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.atlas-local-file-picker-button,
+.atlas-local-file-picker-status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  line-height: 1;
+}
+
+.atlas-local-file-picker-button {
+  flex: 0 0 auto;
+  border-right: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.74);
+  padding: 0 10px;
+  color: #e2e8f0;
+  font-weight: 650;
+}
+
+.atlas-local-file-picker-status {
+  flex: 1 1 auto;
+  overflow: hidden;
+  padding: 0 9px;
+  color: rgba(148, 163, 184, 0.68);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-local-file-picker:focus-within {
+  border-color: rgba(103, 232, 249, 0.62);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
+}
+
+.atlas-local-editor-warning {
+  margin: 0;
+  border: 1px solid rgba(251, 146, 60, 0.28);
+  border-radius: 10px;
+  background: rgba(154, 52, 18, 0.18);
+  padding: 8px 10px;
+  color: #fed7aa;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 .atlas-local-editor-form :is(input, select):focus {
   border-color: rgba(103, 232, 249, 0.62);
   box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
 }
 
 .atlas-local-editor-form > button,
-.atlas-local-editor-restore {
+.atlas-local-editor-restore,
+.atlas-local-editor-delete {
   min-height: 34px;
   border: 1px solid rgba(103, 232, 249, 0.34);
   border-radius: 10px;
@@ -5161,7 +5226,8 @@ button {
 }
 
 .atlas-local-editor-form > button:active,
-.atlas-local-editor-restore:active {
+.atlas-local-editor-restore:active,
+.atlas-local-editor-delete:active {
   transform: scale(0.98);
 }
 
@@ -5275,9 +5341,35 @@ button {
   color: rgba(207, 250, 254, 0.8);
 }
 
-.atlas-local-editor-restore {
-  width: 100%;
+.atlas-local-editor-hidden-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
   margin: 0 0 9px;
+}
+
+.atlas-local-editor-restore,
+.atlas-local-editor-delete {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+
+.atlas-local-editor-delete {
+  border-color: rgba(248, 113, 113, 0.48);
+  background: rgba(185, 28, 28, 0.3);
+  color: #fee2e2;
+}
+
+.atlas-local-editor-hidden-actions button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-local-editor-delete:hover {
+    background: rgba(220, 38, 38, 0.46);
+  }
 }
 
 .atlas-memory-panel-heading-row {

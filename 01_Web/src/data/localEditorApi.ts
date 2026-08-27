@@ -135,6 +135,15 @@ export const importLocalMedia = async () => {
   return parseResponse<{ output: string }>(response)
 }
 
+export const deleteHiddenLocalMedia = async (cityId: string, ids: string[]) => {
+  const response = await fetch('/__travelatlas/editor/media/delete', {
+    method: 'POST',
+    headers: editorHeaders,
+    body: JSON.stringify({ cityId, ids }),
+  })
+  return parseResponse<{ deletedIds: string[]; deletedSourceFiles: number; output: string }>(response)
+}
+
 export type LocalTravelRecordInput = {
   country: string
   country_en: string

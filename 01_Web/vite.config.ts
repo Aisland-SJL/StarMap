@@ -12,7 +12,6 @@ export default defineConfig({
     watch: {
       ignored: [
         '**/public/media/user/**',
-        '**/src/data/generated/**',
       ],
     },
   },

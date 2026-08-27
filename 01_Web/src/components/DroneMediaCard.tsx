@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Drone, GripVertical, Maximize2, X } from 'lucide-react'
 import { localEditorAvailable, travelAtlasEditorState } from '../data/editorState'
 import { allImportedMediaItems } from '../data/mediaCatalog'
-import { importLocalMedia, reloadAfterLocalSave, updateLocalEditorState, uploadLocalMedia } from '../data/localEditorApi'
+import { deleteHiddenLocalMedia, importLocalMedia, reloadAfterLocalSave, updateLocalEditorState, uploadLocalMedia } from '../data/localEditorApi'
 import { readDroneFileMetadata } from '../data/droneMetadata'
 import { cityById } from '../data/travelAtlas'
 import type { DroneMediaItem } from '../data/droneMedia'
@@ -29,6 +29,8 @@ type DroneFileDraft = {
   altitudeMeters: string
   relativeAltitudeMeters: string
   camera?: string
+  width?: number
+  height?: number
   fromFile: {
     date: boolean
     lat: boolean
@@ -39,6 +41,26 @@ type DroneFileDraft = {
 }
 
 const displayNumber = (value?: number) => value === undefined ? '' : String(Number(value.toFixed(7)))
+
+const readImageDimensions = (file: File) => new Promise<{ width: number; height: number }>((resolve, reject) => {
+  const source = URL.createObjectURL(file)
+  const image = new Image()
+  image.onload = () => {
+    URL.revokeObjectURL(source)
+    resolve({ width: image.naturalWidth, height: image.naturalHeight })
+  }
+  image.onerror = () => {
+    URL.revokeObjectURL(source)
+    reject(new Error('无法读取图片尺寸。'))
+  }
+  image.src = source
+})
+
+const isLikelyEquirectangularPanorama = (width?: number, height?: number) => {
+  if (!width || !height) return false
+  const ratio = width / height
+  return ratio >= 1.9 && ratio <= 2.1
+}
 
 const pendingDraft = (file: File, index: number): DroneFileDraft => ({
   id: `${file.name}:${file.size}:${file.lastModified}:${index}`,
@@ -83,6 +105,12 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
         item.id === id && item.cityId === city.id && (item.kind === 'panorama360' || item.kind === 'aerialPhoto')
       )))
     : []
+  const panoramaMismatchCount = uploadForm.kind === 'panorama360'
+    ? fileDrafts.filter((draft) => draft.status === 'ready' && !isLikelyEquirectangularPanorama(draft.width, draft.height)).length
+    : 0
+  const aerialPanoramaHintCount = uploadForm.kind === 'aerialPhoto'
+    ? fileDrafts.filter((draft) => draft.status === 'ready' && isLikelyEquirectangularPanorama(draft.width, draft.height)).length
+    : 0
 
   if (!city || (items.length === 0 && !localEditorAvailable)) return null
 
@@ -116,6 +144,10 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
     }
     if (fileDrafts.some((draft) => !/^\d{4}-\d{2}-\d{2}$/.test(draft.date))) {
       setNotice('每个文件都必须有有效的拍摄日期。文件未记录日期时，请手动补充。')
+      return
+    }
+    if (panoramaMismatchCount > 0) {
+      setNotice(`检测到 ${panoramaMismatchCount} 张图片不是常见的 2:1 全景比例。请改选“航拍照片”，或重新选择正确的 360 全景图。`)
       return
     }
     setBusy(true)
@@ -163,7 +195,16 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
     setNotice(`正在读取 ${pending.length} 个文件的日期、坐标和高度信息…`)
     const resolved = await Promise.all(pending.map(async (draft) => {
       try {
-        const metadata = await readDroneFileMetadata(draft.file)
+        const [metadataResult, dimensionsResult] = await Promise.allSettled([
+          readDroneFileMetadata(draft.file),
+          readImageDimensions(draft.file),
+        ])
+        const metadata = metadataResult.status === 'fulfilled' ? metadataResult.value : {}
+        const dimensions = dimensionsResult.status === 'fulfilled' ? dimensionsResult.value : undefined
+        const readErrors = [
+          metadataResult.status === 'rejected' ? '无法读取 EXIF/XMP 元数据' : undefined,
+          dimensionsResult.status === 'rejected' ? '无法读取图片尺寸' : undefined,
+        ].filter(Boolean)
         return {
           ...draft,
           status: 'ready' as const,
@@ -173,6 +214,8 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
           altitudeMeters: displayNumber(metadata.altitudeMeters),
           relativeAltitudeMeters: displayNumber(metadata.relativeAltitudeMeters),
           camera: metadata.camera,
+          ...dimensions,
+          ...(readErrors.length > 0 ? { error: `${readErrors.join('；')}。` } : {}),
           fromFile: {
             date: metadata.date !== undefined,
             lat: metadata.lat !== undefined,
@@ -185,7 +228,7 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
         return {
           ...draft,
           status: 'ready' as const,
-          error: error instanceof Error ? error.message : '无法读取文件元数据。',
+          error: error instanceof Error ? error.message : '无法读取文件信息。',
         }
       }
     }))
@@ -251,8 +294,25 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
                 <option value="panorama360">360 全景</option>
                 <option value="aerialPhoto">航拍照片</option>
               </select>
-              <input required type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" aria-label="无人机图片" onChange={(event) => void readSelectedFiles(event.target.files)} />
+              <label className="atlas-local-file-picker">
+                <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" aria-label="无人机图片" onChange={(event) => void readSelectedFiles(event.target.files)} />
+                <span className="atlas-local-file-picker-button">选择文件</span>
+                <span className="atlas-local-file-picker-status">
+                  {fileDrafts.length === 0
+                    ? '未选取'
+                    : fileDrafts.length === 1 ? fileDrafts[0].file.name : `已选取 ${fileDrafts.length} 个文件`}
+                </span>
+              </label>
             </div>
+            {panoramaMismatchCount > 0 ? (
+              <p className="atlas-local-editor-warning" role="alert">
+                检测到 {panoramaMismatchCount} 张图片不是常见的 2:1 等距柱状全景图，强行打开会产生明显拉伸。请把类型改为“航拍照片”，或重新选择正确的 360 全景图。
+              </p>
+            ) : aerialPanoramaHintCount > 0 ? (
+              <p className="atlas-local-editor-warning" role="status">
+                检测到 {aerialPanoramaHintCount} 张图片接近 2:1，可能是 360 全景图。如果它能水平环绕，请改选“360 全景”；如果只是普通宽幅航拍，可以继续导入。
+              </p>
+            ) : null}
             {fileDrafts.length > 0 ? (
               <div className="atlas-drone-metadata-list">
                 {fileDrafts.map((draft, index) => (
@@ -291,30 +351,51 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
                 ))}
               </div>
             ) : null}
-            <button type="submit" disabled={busy}>确认导入</button>
+            <button type="submit" disabled={busy || panoramaMismatchCount > 0}>确认导入</button>
           </form>
         ) : null}
 
         {notice ? <p className="atlas-local-editor-notice atlas-local-editor-notice-dark" role="status">{notice}</p> : null}
 
         {editing && hiddenIdsForCity.length > 0 ? (
-          <button
-            type="button"
-            className="atlas-local-editor-restore"
-            disabled={busy}
-            onClick={() => {
-              setBusy(true)
-              void updateLocalEditorState((current) => ({
-                ...current,
-                hiddenDroneMediaIds: current.hiddenDroneMediaIds.filter((id) => !hiddenIdsForCity.includes(id)),
-              })).then(reloadAfterLocalSave).catch((error: unknown) => {
-                setNotice(error instanceof Error ? error.message : '恢复失败。')
-                setBusy(false)
-              })
-            }}
-          >
-            恢复本城已隐藏影像（{hiddenIdsForCity.length}）
-          </button>
+          <div className="atlas-local-editor-hidden-actions">
+            <button
+              type="button"
+              className="atlas-local-editor-restore"
+              disabled={busy}
+              onClick={() => {
+                setBusy(true)
+                void updateLocalEditorState((current) => ({
+                  ...current,
+                  hiddenDroneMediaIds: current.hiddenDroneMediaIds.filter((id) => !hiddenIdsForCity.includes(id)),
+                })).then(reloadAfterLocalSave).catch((error: unknown) => {
+                  setNotice(error instanceof Error ? error.message : '恢复失败。')
+                  setBusy(false)
+                })
+              }}
+            >
+              恢复本城隐藏影像（{hiddenIdsForCity.length}）
+            </button>
+            <button
+              type="button"
+              className="atlas-local-editor-delete"
+              disabled={busy}
+              onClick={() => {
+                const confirmed = window.confirm(`确定永久删除本城已隐藏的 ${hiddenIdsForCity.length} 个影像吗？\n\n这会同时删除投递箱原图、生成后的网页文件和目录记录，无法恢复。`)
+                if (!confirmed) return
+                setBusy(true)
+                setNotice('正在彻底删除已隐藏影像…')
+                void deleteHiddenLocalMedia(city.id, hiddenIdsForCity)
+                  .then(reloadAfterLocalSave)
+                  .catch((error: unknown) => {
+                    setNotice(error instanceof Error ? error.message : '删除失败。')
+                    setBusy(false)
+                  })
+              }}
+            >
+              删除隐藏影像
+            </button>
+          </div>
         ) : null}
 
         {displayedItems.length === 0 ? (

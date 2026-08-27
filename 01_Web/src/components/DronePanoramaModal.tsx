@@ -49,13 +49,20 @@ export function DronePanoramaModal({ item, onClose }: DronePanoramaModalProps) {
     viewerRef.current = null
 
     const image = new Image()
+    let retryTimer: number | undefined
+    let attempt = 0
+
+    const loadPanorama = () => {
+      const separator = item.src.includes('?') ? '&' : '?'
+      image.src = `${item.src}${separator}starmapLoad=${Date.now()}-${attempt}`
+    }
 
     image.onload = () => {
       if (cancelled || !containerRef.current) return
 
       viewerRef.current = new Viewer({
         container: containerRef.current,
-        panorama: item.src,
+        panorama: image.src,
         caption: item.titleEn,
         defaultZoomLvl: 35,
         keyboard: 'always',
@@ -66,15 +73,22 @@ export function DronePanoramaModal({ item, onClose }: DronePanoramaModalProps) {
     }
 
     image.onerror = () => {
-      if (!cancelled) setLoadResult({ itemId: item.id, state: 'missing' })
+      if (cancelled) return
+      attempt += 1
+      if (attempt < 5) {
+        retryTimer = window.setTimeout(loadPanorama, 450)
+        return
+      }
+      setLoadResult({ itemId: item.id, state: 'missing' })
     }
 
-    image.src = item.src
+    loadPanorama()
 
     return () => {
       cancelled = true
       image.onload = null
       image.onerror = null
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer)
       viewerRef.current?.destroy()
       viewerRef.current = null
     }
@@ -132,12 +146,12 @@ export function DronePanoramaModal({ item, onClose }: DronePanoramaModalProps) {
             <div className="absolute inset-0 grid place-items-center bg-slate-950">
               <div className="max-w-md px-6 text-center">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-300">
-                  {loadState === 'loading' ? 'Loading panorama' : 'Panorama file not found'}
+                  {loadState === 'loading' ? '正在加载全景图' : '全景资源暂时无法读取'}
                 </p>
                 <p className="mt-3 text-sm leading-6 text-slate-300">
                   {loadState === 'loading'
-                    ? 'Preparing the immersive 360 viewer.'
-                    : `Place the panorama file at ${item.src} and reopen this viewer.`}
+                    ? '正在生成并加载沉浸式 360 视图。'
+                    : '请稍后重新打开。如果问题持续存在，请重新导入原图。'}
                 </p>
               </div>
             </div>

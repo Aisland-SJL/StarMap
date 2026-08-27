@@ -43,7 +43,7 @@ Country and city folder names must match the active private `01_Web/src/data/gen
 
 ## Source Preservation and Sidecars
 
-Original media in `MediaInbox` is immutable: never move, rename, overwrite, delete, or edit it. Two private control sidecars are the only Agent-writable exceptions:
+Original media in `MediaInbox` is immutable by default: never move, rename, overwrite, delete, or edit it. The only deletion exception is an explicit, confirmed **Delete hidden media** action in the local editor; it removes the selected hidden source files, their generated web variants, sidecar entries, and catalog records. Two private control sidecars are the normal Agent-writable exceptions:
 
 - `<country>/country.json` maps an ambiguous country folder to an existing `countryId`.
 - `<country>/<city>/media.json` records drone type and capture metadata using `media.example.json` as the shape reference.
@@ -55,7 +55,7 @@ These JSON files are metadata, not media derivatives. Converted, resized, optimi
 - Automated import supports JPEG, PNG, WebP, AVIF, MP4, and WebM.
 - Supported still formats are automatically oriented and optimized into a `640 px` WebP thumbnail plus a `2400 px` WebP viewer preview while retaining the original tier. HEIC, HEIF, TIFF, RAW, and MOV are not converted by the current importer; leave them unchanged, explain the limitation, and ask before separate conversion work.
 - Ordinary city photos need no extra metadata. A filename beginning with `cover` becomes the preferred City Info image.
-- Drone items need a reliable kind, date, and resolution before they become active Drone Media. The Agent must read EXIF/XMP first and may write the sidecar for missing facts, but must ask rather than invent them. Geographic position and altitude are optional: an item without coordinates can appear in Drone Media but does not create a map marker or camera target.
+- Drone items need a reliable kind, date, and resolution before they become active Drone Media. The Agent must read EXIF/XMP first and may write the sidecar for missing facts, but must ask rather than invent them. A `panorama360` still must be close to the standard 2:1 equirectangular ratio; mismatches are blocked with guidance to select **Aerial photo** or provide the correct panorama. Geographic position and altitude are optional: an item without coordinates can appear in Drone Media but does not create a map marker or camera target.
 - Unknown countries, unknown cities, unresolved files, or media placed outside `photos/` and `drone/` must remain unimported.
 
 ## Privacy Boundary
