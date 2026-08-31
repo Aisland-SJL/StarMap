@@ -766,20 +766,23 @@ const removeSidecarEntries = async (sourcePaths) => {
   }
 }
 
-const deleteHiddenDroneMedia = async (input) => {
+const deleteHiddenMedia = async (input) => {
   const cityId = typeof input?.cityId === 'string' ? input.cityId.trim() : ''
   const ids = isStringArray(input?.ids) ? [...new Set(input.ids)] : []
-  if (!cityId || ids.length === 0) throw new Error('没有可删除的隐藏影像。')
+  if (!cityId || ids.length === 0) throw new Error('没有可删除的隐藏媒体。')
 
   const state = normalizeState(await readJson(editorStatePath, emptyState))
-  const hiddenIds = new Set(state.hiddenDroneMediaIds)
+  const hiddenPhotoIds = new Set(state.hiddenMediaIds)
+  const hiddenDroneIds = new Set(state.hiddenDroneMediaIds)
   const catalog = await readJson(mediaCatalogPath, { items: [] })
   const catalogItems = Array.isArray(catalog.items) ? catalog.items : []
   const itemsById = new Map(catalogItems.map((item) => [item.id, item]))
   for (const id of ids) {
     const item = itemsById.get(id)
-    if (!hiddenIds.has(id) || item?.cityId !== cityId || !['panorama360', 'aerialPhoto'].includes(item?.kind)) {
-      throw new Error('只能彻底删除当前城市中已经隐藏的无人机影像。')
+    const isHiddenPhoto = item?.kind === 'photo' && hiddenPhotoIds.has(id)
+    const isHiddenDroneMedia = ['panorama360', 'aerialPhoto'].includes(item?.kind) && hiddenDroneIds.has(id)
+    if (item?.cityId !== cityId || (!isHiddenPhoto && !isHiddenDroneMedia)) {
+      throw new Error('只能彻底删除当前城市中已经隐藏的照片或无人机影像。')
     }
   }
 
@@ -793,11 +796,11 @@ const deleteHiddenDroneMedia = async (input) => {
   for (const id of ids) {
     const relativeSources = sourceIndex.sourcesById?.[id]
     if (!Array.isArray(relativeSources) || relativeSources.length === 0) {
-      throw new Error(`找不到影像 ${id} 对应的投递箱原图，已停止删除。`)
+      throw new Error(`找不到媒体 ${id} 对应的投递箱原图，已停止删除。`)
     }
     for (const relativeSource of relativeSources) {
       const sourcePath = path.resolve(inboxRoot, relativeSource)
-      if (!isPathInside(inboxRoot, sourcePath)) throw new Error('影像源文件路径超出投递箱范围，已停止删除。')
+      if (!isPathInside(inboxRoot, sourcePath)) throw new Error('媒体源文件路径超出投递箱范围，已停止删除。')
       sourcePaths.push(sourcePath)
     }
   }
@@ -835,7 +838,10 @@ const deleteHiddenDroneMedia = async (input) => {
 
   const nextState = normalizeState({
     ...state,
+    hiddenMediaIds: state.hiddenMediaIds.filter((id) => !ids.includes(id)),
     hiddenDroneMediaIds: state.hiddenDroneMediaIds.filter((id) => !ids.includes(id)),
+    mediaOrderByCity: Object.fromEntries(Object.entries(state.mediaOrderByCity)
+      .map(([key, value]) => [key, value.filter((id) => !ids.includes(id))])),
     droneOrderByCity: Object.fromEntries(Object.entries(state.droneOrderByCity)
       .map(([key, value]) => [key, value.filter((id) => !ids.includes(id))])),
   })
@@ -1039,7 +1045,7 @@ export function travelAtlasLocalEditor(options = {}) {
             }
 
             if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/media/delete') {
-              const result = await deleteHiddenDroneMedia(await readJsonBody(request))
+              const result = await deleteHiddenMedia(await readJsonBody(request))
               return sendJson(response, 200, { ok: true, ...result })
             }
 

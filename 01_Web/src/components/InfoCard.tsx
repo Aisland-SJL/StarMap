@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { CalendarDays, Compass, GripVertical, Layers3, Star, X } from 'lucide-react'
 import { localEditorAvailable, travelAtlasEditorState } from '../data/editorState'
 import { allImportedMediaItems, getCityCoverPhoto, getCityPhotos, getMediaSource } from '../data/mediaCatalog'
-import { addLocalTravelRecord, importLocalMedia, reloadAfterLocalSave, searchLocalCities, updateLocalEditorState, uploadLocalMedia } from '../data/localEditorApi'
+import { addLocalTravelRecord, deleteHiddenLocalMedia, importLocalMedia, reloadAfterLocalSave, searchLocalCities, updateLocalEditorState, uploadLocalMedia } from '../data/localEditorApi'
 import type { CitySearchOption } from '../data/localEditorApi'
 import { cityById, countryById, getCitiesForCountry } from '../data/travelAtlas'
 import type { CityId, Country, CountryId, SelectionMode } from '../types/travel'
@@ -509,24 +509,50 @@ export function InfoCard({ mode, selectedCountryId, selectedCityId, onSelectCity
             ) : null}
 
             {isCityMode && photoEditing && hiddenPhotoIdsForCity.length > 0 ? (
-              <button
-                type="button"
-                className="atlas-local-editor-restore"
-                disabled={editorBusy}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  setEditorBusy(true)
-                  void updateLocalEditorState((current) => ({
-                    ...current,
-                    hiddenMediaIds: current.hiddenMediaIds.filter((id) => !hiddenPhotoIdsForCity.includes(id)),
-                  })).then(reloadAfterLocalSave).catch((error: unknown) => {
-                    setEditorNotice(error instanceof Error ? error.message : '恢复失败。')
-                    setEditorBusy(false)
-                  })
-                }}
-              >
-                恢复本城已隐藏照片（{hiddenPhotoIdsForCity.length}）
-              </button>
+              <div className="atlas-local-editor-hidden-actions">
+                <button
+                  type="button"
+                  className="atlas-local-editor-restore"
+                  disabled={editorBusy}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setEditorBusy(true)
+                    void updateLocalEditorState((current) => ({
+                      ...current,
+                      hiddenMediaIds: current.hiddenMediaIds.filter((id) => !hiddenPhotoIdsForCity.includes(id)),
+                    })).then(reloadAfterLocalSave).catch((error: unknown) => {
+                      setEditorNotice(error instanceof Error ? error.message : '恢复失败。')
+                      setEditorBusy(false)
+                    })
+                  }}
+                >
+                  恢复本城隐藏照片（{hiddenPhotoIdsForCity.length}）
+                </button>
+                <button
+                  type="button"
+                  className="atlas-local-editor-delete"
+                  disabled={editorBusy}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    const confirmed = window.confirm(`确定永久删除本城已隐藏的 ${hiddenPhotoIdsForCity.length} 张照片吗？\n\n这会同时删除投递箱原图、生成后的网页文件和目录记录，无法恢复。`)
+                    if (!confirmed) return
+                    setEditorBusy(true)
+                    setEditorNotice('正在彻底删除已隐藏照片…')
+                    void updateLocalEditorState((current) => ({
+                      ...current,
+                      hiddenMediaIds: [...new Set([...current.hiddenMediaIds, ...hiddenPhotoIdsForCity])],
+                    }))
+                      .then(() => deleteHiddenLocalMedia(city.id, hiddenPhotoIdsForCity))
+                      .then(reloadAfterLocalSave)
+                      .catch((error: unknown) => {
+                        setEditorNotice(error instanceof Error ? error.message : '彻底删除失败。')
+                        setEditorBusy(false)
+                      })
+                  }}
+                >
+                  彻底删除隐藏照片
+                </button>
+              </div>
             ) : null}
 
             {isCityMode && displayedCityPhotos.length === 0 ? (

@@ -387,7 +387,11 @@ export function DroneMediaCard({ cityId, activeItemId, onSelectItem, onOpenPanor
                 if (!confirmed) return
                 setBusy(true)
                 setNotice('正在彻底删除已隐藏影像…')
-                void deleteHiddenLocalMedia(city.id, hiddenIdsForCity)
+                void updateLocalEditorState((current) => ({
+                  ...current,
+                  hiddenDroneMediaIds: [...new Set([...current.hiddenDroneMediaIds, ...hiddenIdsForCity])],
+                }))
+                  .then(() => deleteHiddenLocalMedia(city.id, hiddenIdsForCity))
                   .then(reloadAfterLocalSave)
                   .catch((error: unknown) => {
                     setNotice(error instanceof Error ? error.message : '删除失败。')

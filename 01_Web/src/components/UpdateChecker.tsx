@@ -1,5 +1,8 @@
+import { lazy, Suspense } from 'react'
 import { ArrowUpRight, Check, Copy, RefreshCw } from 'lucide-react'
 import type { ReleaseUpdateState } from '../data/releaseUpdates'
+
+const ReleaseMarkdown = lazy(() => import('./ReleaseMarkdown'))
 
 type ReleaseUpdateButtonProps = {
   active: boolean
@@ -73,20 +76,8 @@ export function ReleaseUpdatePage({ state }: ReleaseUpdatePageProps) {
             </ol>
           </section>
 
-          <section className="update-content-card update-announcement-card">
-            <p className="update-card-index">02</p>
-            <p className="update-card-kicker">Announcement</p>
-            <h3>更新公告</h3>
-            <div className="update-release-copy">{announcement}</div>
-            {state.release ? (
-              <a className="update-release-link" href={state.release.html_url} target="_blank" rel="noreferrer">
-                查看 GitHub Release <ArrowUpRight aria-hidden="true" />
-              </a>
-            ) : null}
-          </section>
-
           <section className="update-content-card update-version-card">
-            <p className="update-card-index">03</p>
+            <p className="update-card-index">02</p>
             <p className="update-card-kicker">Version notes</p>
             <h3>版本说明</h3>
             <dl>
@@ -116,6 +107,22 @@ export function ReleaseUpdatePage({ state }: ReleaseUpdatePageProps) {
                 重新检查
               </button>
             </div>
+          </section>
+
+          <section className="update-content-card update-announcement-card">
+            <p className="update-card-index">03</p>
+            <p className="update-card-kicker">Announcement</p>
+            <h3>更新公告</h3>
+            <div className="update-release-copy">
+              <Suspense fallback={<p className="update-release-loading">正在排版更新公告…</p>}>
+                <ReleaseMarkdown source={announcement} />
+              </Suspense>
+            </div>
+            {state.release ? (
+              <a className="update-release-link" href={state.release.html_url} target="_blank" rel="noreferrer">
+                查看 GitHub Release <ArrowUpRight aria-hidden="true" />
+              </a>
+            ) : null}
           </section>
         </div>
       </div>

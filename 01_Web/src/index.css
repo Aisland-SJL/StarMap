@@ -5990,11 +5990,11 @@ button {
 
 .update-guide-card,
 .update-version-card {
-  grid-column: span 4;
+  grid-column: span 6;
 }
 
 .update-announcement-card {
-  grid-column: span 4;
+  grid-column: 1 / -1;
 }
 
 .update-card-index {
@@ -6039,7 +6039,112 @@ button {
   color: rgba(203, 213, 225, 0.78);
   font-size: 12px;
   line-height: 1.7;
-  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.update-release-copy > :first-child {
+  margin-top: 0;
+}
+
+.update-release-copy > :last-child {
+  margin-bottom: 0;
+}
+
+.update-release-loading {
+  color: rgba(148, 163, 184, 0.62);
+}
+
+.update-release-copy :is(p, ul, ol, blockquote, pre, table, hr) {
+  margin: 12px 0;
+}
+
+.update-release-copy :is(h1, h2, h3, h4) {
+  margin: 20px 0 8px;
+  color: #eef6fd;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.update-release-copy h1,
+.update-release-copy h2 {
+  font-size: 16px;
+}
+
+.update-release-copy h3,
+.update-release-copy h4 {
+  font-size: 14px;
+}
+
+.update-release-copy :is(ul, ol) {
+  padding-left: 20px;
+}
+
+.update-release-copy li + li {
+  margin-top: 6px;
+}
+
+.update-release-copy strong {
+  color: #f8fafc;
+  font-weight: 650;
+}
+
+.update-release-copy a {
+  color: #7dd3fc;
+  text-decoration: underline;
+  text-decoration-color: rgba(125, 211, 252, 0.38);
+  text-underline-offset: 3px;
+}
+
+.update-release-copy blockquote {
+  border-left: 2px solid rgba(125, 211, 252, 0.42);
+  padding-left: 12px;
+  color: rgba(203, 213, 225, 0.64);
+}
+
+.update-release-copy code {
+  border: 1px solid rgba(186, 230, 253, 0.12);
+  border-radius: 5px;
+  background: rgba(2, 8, 15, 0.58);
+  padding: 2px 5px;
+  color: #bae6fd;
+  font-size: 0.92em;
+}
+
+.update-release-copy pre {
+  overflow-x: auto;
+  border: 1px solid rgba(186, 230, 253, 0.1);
+  border-radius: 9px;
+  background: rgba(2, 8, 15, 0.68);
+  padding: 12px;
+}
+
+.update-release-copy pre code {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.update-release-copy table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.update-release-copy :is(th, td) {
+  border: 1px solid rgba(186, 230, 253, 0.12);
+  padding: 7px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.update-release-copy th {
+  background: rgba(15, 29, 44, 0.72);
+  color: #eef6fd;
+  font-weight: 600;
+}
+
+.update-release-copy hr {
+  border: 0;
+  border-top: 1px solid rgba(186, 230, 253, 0.12);
 }
 
 .update-release-link {

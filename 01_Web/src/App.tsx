@@ -18,12 +18,13 @@ import { JourneyViewToggle } from './components/JourneyViewToggle'
 import type { JourneyViewMode } from './components/JourneyViewToggle'
 import { JourneyYearCards } from './components/JourneyYearCards'
 import type { DroneMediaItem } from './data/droneMedia'
-import { hasDroneMedia } from './data/droneMedia'
+import { droneMediaById, hasDroneMedia } from './data/droneMedia'
 import { localEditorAvailable } from './data/editorState'
 import { getInitialMapSource, rememberMapSource } from './data/mapSources'
 import type { MapSourceId } from './data/mapSources'
 import { useReleaseUpdates } from './data/releaseUpdates'
-import { cities, cityById, countries, getCitiesForCountry, journeyDays, travelAtlasMeta } from './data/travelAtlas'
+import { cities, cityById, countries, countryById, getCitiesForCountry, journeyDays, travelAtlasMeta } from './data/travelAtlas'
+import { readAtlasViewState, rememberAtlasViewState } from './data/viewState'
 import type { CityId, CountryId, JourneyDay, SelectionMode } from './types/travel'
 
 const DronePanoramaModal = lazy(() =>
@@ -56,30 +57,74 @@ const cameraScaleForDistance = (distance: number): CameraScale => {
 }
 
 function App() {
-  const [selectedCountryId, setSelectedCountryId] = useState<CountryId | undefined>()
-  const [selectedCityId, setSelectedCityId] = useState<CityId | undefined>()
+  const restoredViewState = useMemo(() => readAtlasViewState(), [])
+  const restoredCityId = restoredViewState.selectedCityId && cityById[restoredViewState.selectedCityId]
+    ? restoredViewState.selectedCityId
+    : undefined
+  const restoredCountryId = cityById[restoredCityId ?? '']?.countryId
+    ?? (restoredViewState.selectedCountryId && countryById[restoredViewState.selectedCountryId]
+      ? restoredViewState.selectedCountryId
+      : undefined)
+  const restoredSelectionMode: SelectionMode = restoredViewState.selectionMode === 'city' && restoredCityId
+    ? 'city'
+    : restoredViewState.selectionMode === 'country' && restoredCountryId
+      ? 'country'
+      : 'overview'
+  const restoredGlobeDistance = typeof restoredViewState.globeDistance === 'number'
+    && Number.isFinite(restoredViewState.globeDistance)
+    && restoredViewState.globeDistance >= 0.8
+    && restoredViewState.globeDistance <= 5.5
+    ? restoredViewState.globeDistance
+    : restoredSelectionMode === 'city'
+      ? cityDistance
+      : restoredSelectionMode === 'country'
+        ? countryDistance
+        : overviewDistance
+  const defaultSelectedDayId = [...journeyDays].sort((left, right) =>
+    `${right.date}-${right.id}`.localeCompare(`${left.date}-${left.id}`),
+  )[0]?.id ?? ''
+  const restoredSelectedDayId = restoredViewState.selectedDayId
+    && journeyDays.some((day) => day.id === restoredViewState.selectedDayId)
+    ? restoredViewState.selectedDayId
+    : defaultSelectedDayId
+  const restoredActivePage: AtlasPage = ['map', 'journey', 'about'].includes(restoredViewState.activePage ?? '')
+    ? restoredViewState.activePage as AtlasPage
+    : 'map'
+  const restoredPageBeforeUpdate: Exclude<AtlasPage, 'about'> = restoredViewState.pageBeforeUpdate === 'journey'
+    ? 'journey'
+    : 'map'
+  const restoredJourneyViewMode: JourneyViewMode = restoredViewState.journeyViewMode === 'yearCards'
+    ? 'yearCards'
+    : 'timeline'
+  const restoredDroneCityId = restoredViewState.activeDroneMediaCityId
+    && cityById[restoredViewState.activeDroneMediaCityId]
+    ? restoredViewState.activeDroneMediaCityId
+    : undefined
+  const restoredDroneItemId = restoredViewState.activeDroneMediaItemId
+    && droneMediaById[restoredViewState.activeDroneMediaItemId]?.cityId === restoredDroneCityId
+    ? restoredViewState.activeDroneMediaItemId
+    : undefined
+
+  const [selectedCountryId, setSelectedCountryId] = useState<CountryId | undefined>(restoredCountryId)
+  const [selectedCityId, setSelectedCityId] = useState<CityId | undefined>(restoredCityId)
   const [hoveredCountryId, setHoveredCountryId] = useState<CountryId | undefined>()
-  const [selectedDayId, setSelectedDayId] = useState<string>(() =>
-    [...journeyDays].sort((left, right) =>
-      `${right.date}-${right.id}`.localeCompare(`${left.date}-${left.id}`),
-    )[0]?.id ?? '',
-  )
-  const [selectionMode, setSelectionMode] = useState<SelectionMode>('overview')
+  const [selectedDayId, setSelectedDayId] = useState(restoredSelectedDayId)
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>(restoredSelectionMode)
   const [, setHoverCityId] = useState<CityId>()
-  const [globeDistance, setGlobeDistance] = useState(overviewDistance)
+  const [globeDistance, setGlobeDistance] = useState(restoredGlobeDistance)
   const [globeResetVersion, setGlobeResetVersion] = useState(0)
-  const [activePage, setActivePage] = useState<AtlasPage>('map')
-  const [pageBeforeUpdate, setPageBeforeUpdate] = useState<Exclude<AtlasPage, 'about'>>('map')
+  const [activePage, setActivePage] = useState<AtlasPage>(restoredActivePage)
+  const [pageBeforeUpdate, setPageBeforeUpdate] = useState<Exclude<AtlasPage, 'about'>>(restoredPageBeforeUpdate)
   const [imageryTuningByTheme, setImageryTuningByTheme] = useState(imageryTuningDefaults)
   const [mapSource, setMapSource] = useState<MapSourceId>(getInitialMapSource)
-  const [journeyViewMode, setJourneyViewMode] = useState<JourneyViewMode>('timeline')
-  const [activeDroneMediaCityId, setActiveDroneMediaCityId] = useState<CityId>()
-  const [activeDroneMediaItemId, setActiveDroneMediaItemId] = useState<string>()
+  const [journeyViewMode, setJourneyViewMode] = useState<JourneyViewMode>(restoredJourneyViewMode)
+  const [activeDroneMediaCityId, setActiveDroneMediaCityId] = useState<CityId | undefined>(restoredDroneCityId)
+  const [activeDroneMediaItemId, setActiveDroneMediaItemId] = useState<string | undefined>(restoredDroneItemId)
   const [panoramaModalItem, setPanoramaModalItem] = useState<DroneMediaItem>()
   const [cityPhotoGallery, setCityPhotoGallery] = useState<CityPhotoGalleryRequest>()
-  const [sidebarsOpen, setSidebarsOpen] = useState(() =>
-    typeof window === 'undefined' ? true : window.matchMedia(sidebarMediaQuery).matches,
-  )
+  const [sidebarsOpen, setSidebarsOpen] = useState(() => typeof restoredViewState.sidebarsOpen === 'boolean'
+    ? restoredViewState.sidebarsOpen
+    : typeof window === 'undefined' || window.matchMedia(sidebarMediaQuery).matches)
   const releaseUpdates = useReleaseUpdates()
   const selectedCityHasDroneMedia = selectionMode === 'city' && selectedCityId
     ? hasDroneMedia(selectedCityId)
@@ -136,6 +181,34 @@ function App() {
     mediaQuery.addEventListener('change', syncSidebarVisibility)
     return () => mediaQuery.removeEventListener('change', syncSidebarVisibility)
   }, [])
+
+  useEffect(() => {
+    rememberAtlasViewState({
+      selectedCountryId,
+      selectedCityId,
+      selectedDayId,
+      selectionMode,
+      globeDistance,
+      activePage,
+      pageBeforeUpdate,
+      journeyViewMode,
+      activeDroneMediaCityId,
+      activeDroneMediaItemId,
+      sidebarsOpen,
+    })
+  }, [
+    activeDroneMediaCityId,
+    activeDroneMediaItemId,
+    activePage,
+    globeDistance,
+    journeyViewMode,
+    pageBeforeUpdate,
+    selectedCityId,
+    selectedCountryId,
+    selectedDayId,
+    selectionMode,
+    sidebarsOpen,
+  ])
 
   const atlasStats = useMemo(
     () => [
