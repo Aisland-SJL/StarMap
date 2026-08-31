@@ -903,9 +903,9 @@ export function travelAtlasLocalEditor(options = {}) {
       server.watcher.add(dataRoot)
       server.watcher.on('change', (changedPath) => {
         if (!path.resolve(changedPath).startsWith(path.resolve(dataRoot))) return
-        if (editorMutationDepth > 0 || Date.now() < ignoreWatcherUntil) return
         const privateModule = server.moduleGraph.getModuleById(resolvedPrivateDataId)
         if (privateModule) server.moduleGraph.invalidateModule(privateModule)
+        if (editorMutationDepth > 0 || Date.now() < ignoreWatcherUntil) return
         server.ws.send({ type: 'full-reload' })
       })
       server.middlewares.use(async (request, response, next) => {
