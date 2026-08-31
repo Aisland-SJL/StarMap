@@ -802,8 +802,24 @@ const deleteHiddenDroneMedia = async (input) => {
     }
   }
 
+  const generatedDirectories = []
+  for (const id of ids) {
+    const item = itemsById.get(id)
+    const mediaSrc = String(item?.src ?? '').replaceAll('\\', '/')
+    const mediaPrefix = '/media/user/'
+    if (!mediaSrc.startsWith(mediaPrefix)) {
+      throw new Error('影像生成路径格式无效，已停止删除。')
+    }
+    const generatedFile = path.resolve(userMediaRoot, mediaSrc.slice(mediaPrefix.length))
+    const generatedDirectory = path.dirname(generatedFile)
+    if (!isPathInside(userMediaRoot, generatedDirectory)) {
+      throw new Error('生成文件路径超出用户媒体目录，已停止删除。')
+    }
+    generatedDirectories.push(generatedDirectory)
+  }
+
   let deletedSourceFiles = 0
-  for (const sourcePath of sourcePaths) {
+  for (const sourcePath of new Set(sourcePaths)) {
     try {
       await unlink(sourcePath)
       deletedSourceFiles += 1
@@ -813,11 +829,7 @@ const deleteHiddenDroneMedia = async (input) => {
   }
   await removeSidecarEntries(sourcePaths)
 
-  for (const id of ids) {
-    const item = itemsById.get(id)
-    const generatedFile = path.resolve(webRoot, 'public', String(item.src).replace(/^\/+/, ''))
-    const generatedDirectory = path.dirname(generatedFile)
-    if (!isPathInside(userMediaRoot, generatedDirectory)) throw new Error('生成文件路径超出用户媒体目录，已停止删除。')
+  for (const generatedDirectory of new Set(generatedDirectories)) {
     await rm(generatedDirectory, { recursive: true, force: true })
   }
 

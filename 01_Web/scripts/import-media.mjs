@@ -38,7 +38,8 @@ const plannedItems = []
 
 function normalizeName(value) {
   return String(value ?? '')
-    .normalize('NFKC')
+    .normalize('NFKD')
+    .replace(/\p{Mark}+/gu, '')
     .trim()
     .toLocaleLowerCase('en-US')
     .replace(/[\s_-]+/g, '')
@@ -47,8 +48,9 @@ function normalizeName(value) {
 function slugify(value) {
   return String(value ?? '')
     .toLowerCase()
+    .normalize('NFKC')
     .trim()
-    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
     .replace(/^-|-$/g, '')
 }
 
