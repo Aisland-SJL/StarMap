@@ -7,7 +7,7 @@ StarMap 是 Vite React 项目。
 每次需要本地预览时，必须在项目根目录内启动：
 
 ```bash
-npm run dev -- --host 127.0.0.1
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
 项目根目录是当前仓库中的 `01_Web/`。
@@ -23,18 +23,18 @@ npm run dev -- --host 127.0.0.1
 7. 如果需要强制刷新依赖，优先使用：
 
 ```bash
-npm run dev -- --host 127.0.0.1 --force
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --force
 ```
 
 以后启动预览时，只使用标准方式：
 
 ```bash
-npm run dev -- --host 127.0.0.1
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
 不要再使用临时 Vite 启动脚本或自定义缓存路径。
 
-端口 5174 被占用时，使用 5175；不要停止其他项目的服务。
+Codex 固定使用端口 5173，DSH 固定使用端口 5174。启用 strict port；若 5173 被占用，停止并报告，不得自动改用 5174。
 
 ## Imagery Source Credential Boundary
 

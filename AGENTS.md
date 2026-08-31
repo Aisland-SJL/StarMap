@@ -64,7 +64,7 @@ When a user mentions uploading, importing, organizing, or adding travel photos o
 Use the standard Vite entry from `01_Web/`:
 
 ```powershell
-npm run dev -- --host 127.0.0.1 --port 5174
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
 - Do not use a Node API wrapper to start Vite.
