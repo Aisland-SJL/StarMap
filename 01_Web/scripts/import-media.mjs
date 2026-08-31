@@ -4,15 +4,16 @@ import { copyFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/pro
 import path from 'node:path'
 import sharp from 'sharp'
 import { fileURLToPath } from 'node:url'
+import { getPrivatePaths } from './private-profile.mjs'
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url))
 const webRoot = path.resolve(scriptDirectory, '..')
-const projectRoot = path.resolve(webRoot, '..')
-const inboxRoot = path.join(projectRoot, '02_Assets', 'MediaInbox')
-const outputRoot = path.join(webRoot, 'public', 'media', 'user')
-const catalogPath = path.join(webRoot, 'src', 'data', 'generated', 'user-media.local.json')
-const sourceIndexPath = path.join(webRoot, 'src', 'data', 'generated', 'media-source-index.local.json')
-const localTravelDataPath = path.join(webRoot, 'src', 'data', 'generated', 'travel-map.local.json')
+const privatePaths = getPrivatePaths()
+const inboxRoot = privatePaths.inboxRoot
+const outputRoot = privatePaths.userMediaRoot
+const catalogPath = privatePaths.mediaCatalogPath
+const sourceIndexPath = privatePaths.mediaSourceIndexPath
+const localTravelDataPath = privatePaths.localTravelMapPath
 const sampleTravelDataPath = path.join(webRoot, 'src', 'data', 'travel-map.sample.json')
 const shouldApply = process.argv.includes('--apply')
 
@@ -56,7 +57,7 @@ function toPosix(value) {
 }
 
 function publicSrc(outputPath) {
-  return `/${toPosix(path.relative(path.join(webRoot, 'public'), outputPath))}`
+  return `/media/user/${toPosix(path.relative(outputRoot, outputPath))}`
 }
 
 function orientedDimensions(imageMetadata) {
@@ -578,7 +579,7 @@ async function main() {
   }
 
   if (!(await pathExists(inboxRoot))) {
-    errors.push('找不到 02_Assets/MediaInbox。')
+    errors.push('找不到外置私有层的 MediaInbox。请先建立 <private-root>/MediaInbox，仓库中的 02_Assets/MediaInbox 仅为公开模板。')
   } else {
     for (const countryEntry of await listDirectories(inboxRoot)) {
       if (countryEntry.name.startsWith('_')) continue
@@ -628,7 +629,7 @@ async function main() {
 
   if (shouldApply) {
     await applyPlan(uniqueItems, plannedItems)
-    console.log(`\n已生成本地目录：${path.relative(projectRoot, catalogPath)}`)
+    console.log('\n已更新 06_private 中的本地媒体目录。')
     console.log('开发预览会自动刷新媒体目录；若页面未更新，请手动刷新一次。')
   }
 }

@@ -1,5 +1,6 @@
 import type { CityId, CountryId } from '../types/travel'
 import { orderBySavedIds, travelAtlasEditorState } from './editorState'
+import { privateMediaCatalog } from 'virtual:starmap-private-data'
 
 export type ImportedMediaKind = 'photo' | 'panorama360' | 'aerialPhoto' | 'video'
 
@@ -48,11 +49,6 @@ type LocalMediaCatalog = {
   items: ImportedMediaCatalogItem[]
 }
 
-const localCatalogModules = import.meta.glob('./generated/user-media.local.json', {
-  eager: true,
-  import: 'default',
-}) as Record<string, unknown>
-
 const isCatalog = (value: unknown): value is LocalMediaCatalog => {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<LocalMediaCatalog>
@@ -64,9 +60,9 @@ export const getMediaSource = (
   variant: 'thumb' | 'preview' | 'original',
 ) => item.variants?.[variant]?.src ?? item.variants?.original.src ?? item.src
 
-export const allImportedMediaItems = Object.values(localCatalogModules)
-  .filter(isCatalog)
-  .flatMap((catalog) => catalog.items)
+export const allImportedMediaItems = isCatalog(privateMediaCatalog)
+  ? privateMediaCatalog.items
+  : []
 
 const hiddenMediaIds = new Set([
   ...travelAtlasEditorState.hiddenMediaIds,

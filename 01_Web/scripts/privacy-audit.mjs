@@ -30,6 +30,16 @@ const existingViolations = publicFiles.filter((filePath) =>
 const samplePath = path.join(webRoot, 'src', 'data', 'travel-map.sample.json')
 const sampleData = JSON.parse(readFileSync(samplePath, 'utf8'))
 const errors = []
+const gitignore = readFileSync(path.join(projectRoot, '.gitignore'), 'utf8')
+const requiredIgnoreRules = [
+  '06_private/',
+  '.starmap-private/',
+  '02_Assets/MediaInbox/*',
+  '01_Web/public/media/user/',
+  '01_Web/src/data/generated/*.local.*',
+  '.env.*',
+  '!.env.example',
+]
 
 if (publicFiles.length === 0) {
   errors.push('No public-file manifest was provided. Run this audit through npm run privacy:check.')
@@ -37,6 +47,10 @@ if (publicFiles.length === 0) {
 
 if (existingViolations.length > 0) {
   errors.push(`Private paths are tracked:\n${existingViolations.map((filePath) => `  - ${filePath}`).join('\n')}`)
+}
+const missingIgnoreRules = requiredIgnoreRules.filter((rule) => !gitignore.split(/\r?\n/).includes(rule))
+if (missingIgnoreRules.length > 0) {
+  errors.push(`Required .gitignore safeguards are missing:\n${missingIgnoreRules.map((rule) => `  - ${rule}`).join('\n')}`)
 }
 if (sampleData.privacy_level !== 'public-sample') {
   errors.push('travel-map.sample.json must declare privacy_level = public-sample.')
@@ -58,6 +72,7 @@ if (errors.length > 0) {
   console.log('StarMap privacy audit passed.')
   console.log(`Tracked and unignored public files checked: ${publicFiles.length}`)
   console.log(`Neutral sample records: ${sampleData.records.length}`)
+  console.log('Required .gitignore safeguards are present.')
   console.log('Private Inbox, generated media, local catalogs, local travel data, and environment files are outside the tracked public boundary.')
   console.log('Note: this checks the current tree. Publish from a clean repository so earlier private Git history is not inherited.')
 }

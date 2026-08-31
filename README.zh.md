@@ -48,11 +48,12 @@ StarMap 使用 React、TypeScript、Vite 与 Cesium 构建。全新下载的仓�
 git clone https://github.com/Aisland-SJL/StarMap.git
 cd StarMap/01_Web
 npm ci
-Copy-Item .env.example .env.local
-npm run dev -- --host 127.0.0.1 --port 5175
+npm run dev:public
 ```
 
-打开 `http://127.0.0.1:5175/`。macOS 与 Linux 用户把 `Copy-Item` 换成 `cp` 即可。
+打开 `http://127.0.0.1:5173/`。这是纯公共预览，只读取中性示例数据，也不需要凭据。
+
+要使用个人地图，请在源码仓库外建立私有层（正式维护工作区固定为 `StarMap/06_private/`），把 `.env.example` 复制到私有层的 `config/.env.local`，再运行 `npm run dev:personal`。独立下载的仓库可以通过 `STARMAP_PRIVATE_ROOT` 指向任意私人目录，也可使用被忽略的 `StarMap/06_private/` 兜底目录。个人配置、旅程、媒体与编辑状态在物理上都不进入源码仓库。
 
 ## 图源凭据——第一次使用先看这里
 
@@ -61,18 +62,18 @@ npm run dev -- --host 127.0.0.1 --port 5175
 1. 登录或注册 [Cesium ion](https://ion.cesium.com/)。
 2. 打开 [Access Tokens](https://ion.cesium.com/tokens)，创建一个应用专用的公开 token。
 3. 为了最容易地在本地启动，可以保留普通公开权限；所有 Private scopes 保持关闭。正式部署时，再把 Allowed URLs 与可访问资源限制到实际需要的范围。
-4. 打开 `01_Web/.env.local`，把 token 填在 `VITE_CESIUM_ION_TOKEN=` 后面。
+4. 打开私有层的 `config/.env.local`，把 token 填在 `VITE_CESIUM_ION_TOKEN=` 后面。
 5. 重新启动开发服务器。
 
 不要把 token 提交到 Git，也不要把完整 token 粘贴到 AI 对话、Issue、截图、日志或 README。浏览器端的生产 token 对访问者可见，因此应单独创建生产 token，并限制域名和资源。
 
 如果希望 AI 带你配置，可以把下面这段话交给 Agent：
 
-> 请先阅读 `AGENTS.md`、`README.zh.md`、`01_Web/AGENTS.md`、`01_Web/README.md` 和 `01_Web/.env.example`。先解释 StarMap 的三种图源，并询问我是需要 Cesium ion、天地图，还是只使用内置本地图源；再引导我申请所选凭据，并配置 `VITE_MAP_SOURCE`、`VITE_CESIUM_ION_TOKEN` 与 `VITE_TIANDITU_TOKEN`。不要让我把完整 token 或 Key 粘贴或展示给你；只告诉我应在被 Git 忽略的 `01_Web/.env.local` 中如何填写，只检查非敏感的“是否存在”和实际地图加载结果。然后帮我启动本地网站并介绍基本操作，同时保护所有被忽略的私人数据与媒体。
+> 请先阅读 `AGENTS.md`、`README.zh.md`、`01_Web/AGENTS.md`、`01_Web/README.md` 和 `01_Web/.env.example`。先解释 StarMap 的三种图源，并询问我是需要 Cesium ion、天地图，还是只使用内置本地图源；再引导我申请所选凭据，并配置 `VITE_MAP_SOURCE`、`VITE_CESIUM_ION_TOKEN` 与 `VITE_TIANDITU_TOKEN`。不要让我把完整 token 或 Key 粘贴或展示给你；只告诉我应在外置私有层的 `config/.env.local` 中如何填写，只检查非敏感的“是否存在”和实际地图加载结果。然后运行 `npm run dev:personal` 并介绍基本操作，绝不把私人数据复制进源码仓库。
 
 ## 在 Cesium 与天地图之间切换
 
-StarMap 的 3D 地球引擎仍然是 Cesium，图源切换只改变地球上显示的影像。需要在中国大陆访问时，可前往[天地图开发资源](https://lbs.tianditu.gov.cn/)申请自己的 Key，并把两套凭据同时写入被 Git 忽略的 `01_Web/.env.local`：
+StarMap 的 3D 地球引擎仍然是 Cesium，图源切换只改变地球上显示的影像。需要在中国大陆访问时，可前往[天地图开发资源](https://lbs.tianditu.gov.cn/)申请自己的 Key，并把两套凭据同时写入私有层的 `config/.env.local`：
 
 ```text
 VITE_MAP_SOURCE=tianditu
@@ -88,14 +89,14 @@ VITE_TIANDITU_TOKEN=
 
 选择无人机文件后，StarMap 会立即逐个读取可用的 EXIF/XMP 信息。文件中已经存在的值会作为“文件读取”结果锁定；只有缺失字段才可填写。缺少日期时必须补充，坐标与高度可以留空。
 
-批量导入媒体时，按照仓库模板把源文件放进 `02_Assets/MediaInbox/`，然后在 `01_Web/` 运行：
+批量导入媒体时，参考仓库中的 `02_Assets/MediaInbox/` 模板，把真实源文件放进外置私有层的 `MediaInbox/`，然后在 `01_Web/` 运行：
 
 ```powershell
 npm run media:check
 npm run media:import
 ```
 
-导入程序不会改写 Inbox 原文件。个人源媒体、生成图片、本地旅行记录、编辑状态与 `.env.local` 都不会进入 Git。
+导入程序不会改写 Inbox 原文件。个人源媒体、生成图片、本地旅行记录、编辑状态与 `.env.local` 全部留在外置私有层，不进入源码仓库。
 
 ## 构建与检查
 
@@ -103,12 +104,12 @@ npm run media:import
 
 ```powershell
 npm run lint
-npm run build
+npm run build:public
 npm run privacy:check
 npm run media:check
 ```
 
-`npm run build` 会在 `01_Web/dist/` 生成不带本地编辑能力的静态公开站点。如果需要在线图源，请在构建前通过托管平台配置相应的 `VITE_CESIUM_ION_TOKEN`、`VITE_TIANDITU_TOKEN` 与 `VITE_MAP_SOURCE`。
+`npm run build:public` 会在 `01_Web/dist/` 生成不带本地编辑能力的静态公开站点。`npm run release:check` 还会要求工作区干净，只把 Git 已跟踪文件归档到系统临时目录，在这个“无私有层”的洁净环境里重新安装、检查和构建，从机制上证明私人内容无法混入公开发布。`build:personal` 只用于你自己控制的私人部署。
 
 ## 后续更新
 
@@ -123,16 +124,16 @@ Fork 用户可以通过 `VITE_GITHUB_REPOSITORY=owner/repository` 改为检查�
 | 路径 | 用途 |
 | --- | --- |
 | `01_Web/` | React、TypeScript、Vite 与 Cesium 应用 |
-| `02_Assets/MediaInbox/` | 私有且保留源文件的媒体入口模板 |
+| `02_Assets/MediaInbox/` | 外置私人投递箱的中性目录模板 |
 | `03_Reference/` | 架构、隐私与媒体工作流说明 |
 | `05_Test/` | 验证说明 |
 
 ## 隐私与安全
 
-- 真实 token 只存放在被忽略的本地文件或托管平台环境变量中。
-- 个人旅行数据与用户媒体默认不会进入 Git。
-- 每次公开贡献或部署前运行 `npm run privacy:check`。
-- 不要上传 `.env.local`、私人媒体、个人数据目录或任何凭据。
+- 真实 token 只存放在外置私有层或托管平台环境变量中。
+- 个人旅行数据与用户媒体只存放在 Git 仓库之外的外置私有层。
+- `.gitignore` 是第二道保险，不是唯一的隔离手段。
+- 每次公开发布前运行 `npm run release:check`；不要上传 `.env.local`、私人媒体、个人数据目录或任何凭据。
 
 ## 许可证
 

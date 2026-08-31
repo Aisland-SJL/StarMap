@@ -4,12 +4,17 @@
   "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "npm run dev:public",
+    "dev:public": "vite --mode public --host 127.0.0.1 --port 5173 --strictPort",
+    "dev:personal": "vite --mode personal --host 127.0.0.1 --port 5173 --strictPort",
+    "build": "npm run build:public",
+    "build:public": "tsc -b && vite build --mode public",
+    "build:personal": "tsc -b && vite build --mode personal",
     "lint": "eslint src scripts vite.config.ts",
     "media:check": "node scripts/import-media.mjs",
     "media:import": "node scripts/import-media.mjs --apply",
     "privacy:check": "git -C .. ls-files --cached --others --exclude-standard -z | node scripts/privacy-audit.mjs --manifest-stdin",
+    "release:check": "npm run privacy:check && node scripts/public-release-check.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

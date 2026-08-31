@@ -21,7 +21,7 @@ When a user asks about Cesium ion, Tianditu, tokens, keys, missing imagery, open
 
 1. Explain the three supported sources first: bundled Natural Earth II always works at low resolution; Cesium ion enables online global imagery; Tianditu provides an alternative online source with Chinese labels. Cesium remains the 3D globe engine in every state.
 2. Distinguish roles. Ordinary visitors use the deployed site's configuration. Every person who clones and deploys StarMap supplies their own provider credentials; never reuse or distribute the original author's values.
-3. Never ask the user to paste a complete token or key into chat, and never read, echo, screenshot, log, copy, or store it. Guide direct entry into ignored `01_Web/.env.local` for development or the hosting platform's environment settings for production.
+3. Never ask the user to paste a complete token or key into chat, and never read, echo, screenshot, log, copy, or store it. Guide direct entry into the external private layer's `config/.env.local` for personal development or the hosting platform's environment settings for production.
 4. Document `VITE_MAP_SOURCE`, `VITE_CESIUM_ION_TOKEN`, and `VITE_TIANDITU_TOKEN` from `01_Web/.env.example`. `VITE_MAP_SOURCE` accepts `auto`, `cesium`, `tianditu`, or `local`; `auto` chooses the first configured online source and then the local fallback.
 5. Treat both online values as public-client credentials: keeping them out of Git prevents repository disclosure, but a built static website necessarily exposes them to browser requests. Production safety comes from app-specific credentials plus each provider's URL, asset, scope, quota, monitoring, and rotation controls.
 6. Recommend separate development and production credentials. Do not invent production restrictions while the final domain or provider requirements are unknown.
@@ -31,7 +31,7 @@ When a user asks about Cesium ion, Tianditu, tokens, keys, missing imagery, open
 
 When a user mentions uploading, importing, organizing, or adding travel photos or drone media:
 
-1. Read `02_Assets/MediaInbox/README.md` first, then read `03_Reference/TravelAtlas_media_import_protocol.md` before inspecting or changing media.
+1. Read `02_Assets/MediaInbox/README.md` first, then read `03_Reference/TravelAtlas_media_import_protocol.md` before inspecting or changing media. Real media lives in the external private layer's `MediaInbox/`; the tracked Inbox is documentation and a neutral template only.
 2. If the user only asks how to upload, explain the folder workflow first; do not modify files or run the import.
 3. If the user asks to perform the import, verify that every item has a reliable existing country and city, and that drone metadata is sufficient for the requested result.
 4. If a country, city, media type, date, coordinate, privacy status, or intended use is missing or uncertain, ask the smallest necessary question and stop. Without a reliable answer, do not guess, copy, convert, catalog, or import that item. A zero-exit preflight does not override this stop rule when its warnings reveal unresolved data.
@@ -55,7 +55,7 @@ When a user mentions uploading, importing, organizing, or adding travel photos o
 
 1. Read the current README and, when present, the private workspace Handoff; choose one bounded task.
 2. Inspect only relevant files; do not recursively scan `node_modules`, `dist`, `.git`, or large media folders.
-3. Make surgical changes and verify them with `npm run lint` and `npm run build` from `01_Web/`.
+3. Make surgical changes and verify them with `npm run lint` and `npm run build:public` from `01_Web/`.
 4. Keep visual checks focused. Do not leave unbounded browser, terminal, or watcher sessions running.
 5. In a private workspace that contains `TravelAtlas_Handoff.md`, update it after substantive work. Do not create one in a clean public clone unless the user asks.
 
@@ -64,23 +64,23 @@ When a user mentions uploading, importing, organizing, or adding travel photos o
 Use the standard Vite entry from `01_Web/`:
 
 ```powershell
-npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+npm run dev:personal
 ```
 
 - Do not use a Node API wrapper to start Vite.
-- The local editor is implemented as a Vite `serve`-only plugin, not a separate wrapper or product. Keep the terminology **local editing state** and **public display state**; do not describe them as two versions.
+- StarMap has one codebase with two explicit profiles: `dev:personal` loads the external private layer and enables the loopback editor; `dev:public` loads only the neutral tracked sample and exposes no editor. They are runtime profiles, not two code editions.
 - Deterministic edits must write directly through the loopback-only local editor with validation, backup, and atomic replacement. Do not reintroduce chat-command or AI-command relays for sorting, hiding, covers, uploads, or form saves.
 - Public builds must render no editor controls and expose no write API. Never rely on CSS-hiding a control as the security boundary.
-- Media added from the local editor must enter `02_Assets/MediaInbox/` first and then use the existing check/import pipeline. Never write uploads directly into `public/media/user/` or generated catalogs.
+- Media added from the local editor must enter the external private layer's `MediaInbox/` first and then use the existing check/import pipeline. Never write personal uploads into tracked source paths.
 - Do not use `--host 0.0.0.0` unless explicitly requested.
 - Check whether a port is already occupied before starting another server.
 - Do not stop or interfere with servers belonging to other projects.
 
 ## Assets and Secrets
 
-- Original project-owned media belongs under `02_Assets/`; browser-ready copies belong under `01_Web/public/`.
+- Public project-owned media belongs under tracked `02_Assets/` or `01_Web/public/`. Personal source media, derivatives, data, and configuration belong only in the external `06_private/` layer.
 - Do not commit personal travel media to a future public template without an explicit publication review.
-- Never read, print, copy, or commit `.env.local`, tokens, cookies, credentials, or secrets.
+- Never read, print, copy, or commit `.env.local`, tokens, cookies, credentials, or secrets. `.gitignore` is defense in depth; the primary boundary is that `06_private/` is physically outside this Git repository.
 - Never ask a user to paste a complete token into chat or task output; direct entry by the user is the only acceptable configuration path.
 - Document required variables only in `01_Web/.env.example`.
 

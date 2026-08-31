@@ -1,6 +1,6 @@
 # StarMap Media Inbox
 
-This is the single user-facing entrance for personal photos and drone media. Users organize files only by country, city, and the two media folders shown below; an Agent handles validation and import.
+This tracked directory documents the single user-facing media workflow and provides a neutral template. Real personal photos and drone media belong in the external private layer's `MediaInbox/`, never in this Git repository.
 
 ## One Request Is Enough
 
@@ -30,7 +30,7 @@ MediaInbox/
       └─ media.json           optional Agent-authored drone metadata
 ```
 
-Country and city folder names must match the active private `01_Web/src/data/generated/travel-map.local.json`. A new country or city must be added to the private travel data in a separate task before its media can be imported. In a clean open-source clone, the folders match the neutral sample until the user creates a local travel file.
+Country and city folder names must match the active `<private-root>/data/travel-map.local.json`. A new country or city must be added to the private travel data in a separate task before its media can be imported.
 
 ## Agent Workflow
 
@@ -39,7 +39,7 @@ Country and city folder names must match the active private `01_Web/src/data/gen
 3. If any country, city, media type, date, coordinate, privacy status, or intended use is missing or uncertain, ask the smallest necessary question and stop. Without a reliable answer, do not guess, copy, convert, catalog, or import that item.
 4. From `01_Web/`, run `npm run media:check`. Any `需要处理` result or warning caused by unresolved required data blocks the import, even if the command exits successfully.
 5. Only after a clean preflight, run `npm run media:import`. The importer creates hash-stable `thumb`, `preview`, and `original` tiers outside the Inbox; restart the preview and verify City Info, City Cards/Photos, Drone Media, and the 360 Viewer as applicable.
-6. Finish with `npm run privacy:check`, `npm run lint`, and `npm run build`, then report imported counts and unresolved items.
+6. Finish with `npm run privacy:check`, `npm run lint`, and `npm run build:personal`, then report imported counts and unresolved items. Before any public release, run `npm run release:check` separately from a clean source worktree.
 
 ## Source Preservation and Sidecars
 
@@ -60,9 +60,9 @@ These JSON files are metadata, not media derivatives. Converted, resized, optimi
 
 ## Privacy Boundary
 
-- `02_Assets/MediaInbox/<real-country>/`: private source delivery and sidecars; ignored by Git.
-- `01_Web/public/media/user/`: generated website media; ignored by Git.
-- `01_Web/src/data/generated/*.local.json`: generated personal catalogs and travel data; ignored by Git.
+- `<private-root>/MediaInbox/<real-country>/`: private source delivery and sidecars; physically outside the source Git repository.
+- `<private-root>/media/user/`: generated website media; physically outside the source Git repository.
+- `<private-root>/data/*.local.json`: generated personal catalogs and travel data; physically outside the source Git repository.
 - `_country-template/`, rules, schema, and scripts: safe to publish with the open-source repository.
 
 Never place credentials, tickets, identity documents, hotel addresses, booking references, or private family material in the Inbox. Never add private Inbox files, generated user media, or local catalogs to Git.

@@ -2,7 +2,7 @@
 
 ## 目标与入口
 
-用户只负责把原始媒体放入 `02_Assets/MediaInbox/<国家名>/<城市名>/`。城市是 StarMap 的最小媒体单位；Agent 负责解释规则、检查结构、确认元数据、运行导入和报告结果，不要求用户逐张上传。
+用户只负责把原始媒体放入外置私有层的 `MediaInbox/<国家名>/<城市名>/`。仓库中的 `02_Assets/MediaInbox/` 只保存公开说明与中性模板。城市是 StarMap 的最小媒体单位；Agent 负责解释规则、检查结构、确认元数据、运行导入和报告结果，不要求用户逐张上传。
 
 用户只需表达一次意图，例如：
 
@@ -13,7 +13,7 @@
 ```text
 MediaInbox（私有投递箱）
         ↓ Agent 解释、预检与确认
-public/media/user（私有三级网页资源）
+06_private/media/user（私有三级网页资源）
         ↓ 导入器生成本地目录
 thumb → City Info / City Cards / Drone Media
 preview → City Photos Viewer
@@ -33,7 +33,7 @@ original → 原图或 360 Viewer 按需加载
 ## 用户唯一需要维护的结构
 
 ```text
-02_Assets/MediaInbox/
+<private-root>/MediaInbox/
 └─ Iceland/
    ├─ country.json            可选：Agent 生成的国家映射旁车
    ├─ Reykjavik/
@@ -70,7 +70,7 @@ original → 原图或 360 Viewer 按需加载
 5. 自动导入支持 JPEG、PNG、WebP、AVIF、MP4 和 WebM。受支持的静态图片会在 Inbox 外自动校正方向，并生成 `640 px` WebP 缩略图、`2400 px` WebP 浏览预览和原图副本三级资源。标记为 `panorama360` 的静态图片必须接近 2:1 等距柱状全景比例；不符合时停止导入并提示改为 `aerialPhoto` 或更换正确全景图。HEIC、HEIF、TIFF、RAW 和 MOV 不由当前导入器自动转换；保持原文件不变，说明原因，并在任何单独转换工作前取得用户确认。
 6. 在 `01_Web/` 运行 `npm run media:check`。只要报告仍有“需要处理”，禁止执行正式导入。若提醒项表示媒体类型、日期、分辨率或其他必要数据仍不确定，即使命令退出码为零也必须先询问并停止，不能静默继续。坐标缺失本身不阻止导入。
 7. 预检通过后运行 `npm run media:import`。工具按内容哈希建立媒体目录，保留 `original`，并为静态图片生成 `thumb.webp` 与 `preview.webp`；它不移动、不覆盖、不删除投递箱原图，也不会清理历史生成文件。
-8. 重启预览并检查城市首图、City Cards/Photos、Drone Media、照片 Viewer 和 360 Viewer。确认列表界面只请求 `thumb`、照片 Viewer 请求 `preview`、360 Viewer 才请求全景 `original`。最后运行 `npm run privacy:check`、`npm run lint` 与 `npm run build`，报告导入数量、未解决项目和验证结果。
+8. 使用 `npm run dev:personal` 重启预览并检查城市首图、City Cards/Photos、Drone Media、照片 Viewer 和 360 Viewer。确认列表界面只请求 `thumb`、照片 Viewer 请求 `preview`、360 Viewer 才请求全景 `original`。最后运行 `npm run privacy:check`、`npm run lint` 与 `npm run build:personal`，报告导入数量、未解决项目和验证结果。公开发布另行运行 `npm run release:check`。
 
 ## 自动生成与展示规则
 
@@ -96,11 +96,11 @@ original → 原图或 360 Viewer 按需加载
 
 ## 隐私与开源边界
 
-以下内容只存在于用户本机，并由 `.gitignore` 排除：
+以下内容只存在于用户本机的外置私有层；它们在物理上不属于源码 Git 仓库，`.gitignore` 只是第二道保险：
 
-- `02_Assets/MediaInbox/<真实国家>/`，包括私有旁车文件。
-- `01_Web/public/media/user/`。
-- `01_Web/src/data/generated/*.local.json`。
+- `<private-root>/MediaInbox/<真实国家>/`，包括私有旁车文件。
+- `<private-root>/media/user/`。
+- `<private-root>/data/*.local.json`。
 
 公开仓库只包含 `_country-template/`、导入脚本、本协议和 JSON Schema。个人原图、网页副本和媒体目录均在 Git 边界之外；公开示例图只能使用明确授权或专门生成的素材。
 

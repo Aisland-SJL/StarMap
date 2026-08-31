@@ -1,4 +1,5 @@
 import travelMapSample from './travel-map.sample.json'
+import { privateTravelMap } from 'virtual:starmap-private-data'
 import { orderBySavedIds, travelAtlasEditorState } from './editorState'
 import { getCityCoordinate, getCountryCoordinate } from './geoCoordinates'
 import type { City, CityId, Country, CountryId, JourneyDay, Route, TravelMapRecord, TravelRecordCategory } from '../types/travel'
@@ -35,11 +36,6 @@ type TravelMapDisplay = {
   journeyRules?: JourneyRule[]
 }
 
-const localTravelMapModules = import.meta.glob('./generated/travel-map.local.json', {
-  eager: true,
-  import: 'default',
-}) as Record<string, unknown>
-
 const isTravelMapExport = (value: unknown): value is TravelMapExport => {
   if (!value || typeof value !== 'object') return false
   return Array.isArray((value as Partial<TravelMapExport>).records)
@@ -51,7 +47,7 @@ const forceSampleData = import.meta.env.VITE_TRAVEL_ATLAS_DATA_MODE === 'sample'
     && new URLSearchParams(window.location.search).get('data') === 'sample')
 const localTravelMap = forceSampleData
   ? undefined
-  : Object.values(localTravelMapModules).find(isTravelMapExport)
+  : isTravelMapExport(privateTravelMap) ? privateTravelMap : undefined
 const exportData = localTravelMap ?? (travelMapSample as TravelMapExport)
 const display = exportData.display ?? {}
 

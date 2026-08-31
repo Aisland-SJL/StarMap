@@ -7,7 +7,7 @@ StarMap 是 Vite React 项目。
 每次需要本地预览时，必须在项目根目录内启动：
 
 ```bash
-npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+npm run dev:personal
 ```
 
 项目根目录是当前仓库中的 `01_Web/`。
@@ -23,13 +23,13 @@ npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 7. 如果需要强制刷新依赖，优先使用：
 
 ```bash
-npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --force
+npm run dev:personal -- --force
 ```
 
 以后启动预览时，只使用标准方式：
 
 ```bash
-npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+npm run dev:personal
 ```
 
 不要再使用临时 Vite 启动脚本或自定义缓存路径。
@@ -40,7 +40,7 @@ Codex 固定使用端口 5173，DSH 固定使用端口 5174。启用 strict port
 
 - StarMap supports Cesium ion imagery, Tianditu imagery with Chinese labels, and the bundled low-resolution Natural Earth II fallback. Cesium remains the 3D engine; switching sources changes imagery, not the globe implementation.
 - A missing online credential is supported. Open-source users provide their own `VITE_CESIUM_ION_TOKEN` and/or `VITE_TIANDITU_TOKEN`; ordinary visitors use the deployed site's configuration and never inherit the original author's values.
-- Never ask for, read, echo, screenshot, log, copy, or store a complete token or key. The user enters development values directly into ignored `.env.local` and production values directly into the hosting platform.
+- Never ask for, read, echo, screenshot, log, copy, or store a complete token or key. The user enters development values directly into the external private layer's `config/.env.local` and production values directly into the hosting platform.
 - Use `VITE_MAP_SOURCE=auto|cesium|tianditu|local` to select the initial source. The browser may remember a later valid choice. A green source-menu light confirms only a non-empty variable, not validity, quota, permissions, or network reachability.
 - Both Vite environment values stay out of Git but are observable in a built static browser application. Use app-specific development and production credentials with provider-supported URL, asset, scope, quota, monitoring, and rotation controls.
 - Verification may check only file presence, ignore coverage, non-secret status, and actual map behavior; never inspect or report the full value.
@@ -58,7 +58,7 @@ Codex 固定使用端口 5173，DSH 固定使用端口 5174。启用 strict port
 - Treat any request about uploading, importing, organizing, or adding photos or drone media as a routed media-import task. Read `../02_Assets/MediaInbox/README.md` first, then `../03_Reference/TravelAtlas_media_import_protocol.md` before execution.
 - If the user only asks how to upload, explain the folder workflow and stop; do not modify files or run the import.
 - If any country, city, media type, date, coordinate, privacy status, or intended use is missing or uncertain, ask one focused question and stop. Without a reliable answer, never guess or import that item; a preflight warning about unresolved data remains blocking even when the command exits successfully.
-- Treat `02_Assets/MediaInbox/<real-country>/`, `public/media/user/`, and `src/data/generated/*.local.json` as private local data; never add them to Git.
+- Treat the external private layer's `MediaInbox/`, `media/user/`, `data/*.local.json`, and `config/.env.local` as private local data; never copy them into the source repository or add them to Git.
 - Run `npm run media:check` before `npm run media:import`.
 - Never guess an unresolved country, city, or drone coordinate, and never delete source media or generated history without explicit confirmation.
 - Ordinary city photos feed City Info and City Photos. Selected drone files must be inspected immediately for embedded date, GPS, altitude, relative altitude, and camera metadata. File-derived values stay read-only; only missing values become editable. Date is required, while coordinates and altitude are optional. A drone item without coordinates may appear in Drone Media but must not create a map marker or camera target.
@@ -68,9 +68,9 @@ Codex 固定使用端口 5173，DSH 固定使用端口 5174。启用 strict port
 
 - Read `../03_Reference/TravelAtlas_open_source_privacy_boundary.md` before changing travel data, publication structure, or deployment.
 - The tracked `src/data/travel-map.sample.json` must remain neutral, runnable, and free of owner data.
-- Personal countries, cities, routes, coordinates, and display rules belong only in ignored `src/data/generated/travel-map.local.json`.
+- Personal countries, cities, routes, coordinates, and display rules belong only in external `06_private/data/travel-map.local.json` (or the standalone clone's configured private root).
 - Do not add built-in personal items to `droneMedia.ts`, personal coordinate tables, or tracked public media paths.
-- Run `npm run privacy:check` before any public-release preparation.
+- Run `npm run release:check` before any public-release preparation. It audits privacy and rebuilds from a clean archive containing only Git-tracked files.
 - Never publish this repository's existing `.git` history. Create the eventual public repository from the documented allowlist with a fresh history.
 
 ## Documentation

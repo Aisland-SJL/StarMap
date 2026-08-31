@@ -1,4 +1,5 @@
 import type { CityId, CountryId } from '../types/travel'
+import { privateEditorState } from 'virtual:starmap-private-data'
 
 export type LocalEditorCountry = {
   id: CountryId
@@ -39,11 +40,6 @@ const emptyEditorState: TravelAtlasEditorState = {
   droneOrderByCity: {},
   hiddenDroneMediaIds: [],
 }
-
-const localEditorStateModules = import.meta.glob('./generated/editor-state.local.json', {
-  eager: true,
-  import: 'default',
-}) as Record<string, unknown>
 
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === 'string')
@@ -92,9 +88,7 @@ const parseEditorState = (value: unknown): TravelAtlasEditorState | undefined =>
   }
 }
 
-export const travelAtlasEditorState = Object.values(localEditorStateModules)
-  .map(parseEditorState)
-  .find(Boolean) ?? emptyEditorState
+export const travelAtlasEditorState = parseEditorState(privateEditorState) ?? emptyEditorState
 
 export const orderBySavedIds = <T extends { id: string }>(items: T[], savedOrder?: string[]) => {
   if (!savedOrder?.length) return items
@@ -110,4 +104,4 @@ export const orderBySavedIds = <T extends { id: string }>(items: T[], savedOrder
   })
 }
 
-export const localEditorAvailable = import.meta.env.DEV
+export const localEditorAvailable = import.meta.env.DEV && import.meta.env.MODE === 'personal'

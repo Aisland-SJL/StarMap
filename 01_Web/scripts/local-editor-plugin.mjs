@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream } from 'node:fs'
-import { access, copyFile, mkdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
+import { access, copyFile, cp, mkdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
@@ -9,18 +9,38 @@ import { promisify } from 'node:util'
 import sharp from 'sharp'
 import { EnvHttpProxyAgent, fetch as proxyAwareFetch } from 'undici'
 import worldCountries from 'world-countries'
+import { getPrivatePaths } from './private-profile.mjs'
 
 const execFileAsync = promisify(execFile)
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const projectRoot = path.resolve(webRoot, '..')
-const generatedRoot = path.join(webRoot, 'src', 'data', 'generated')
-const editorStatePath = path.join(generatedRoot, 'editor-state.local.json')
-const localTravelMapPath = path.join(generatedRoot, 'travel-map.local.json')
-const mediaCatalogPath = path.join(generatedRoot, 'user-media.local.json')
-const mediaSourceIndexPath = path.join(generatedRoot, 'media-source-index.local.json')
 const sampleTravelMapPath = path.join(webRoot, 'src', 'data', 'travel-map.sample.json')
-const inboxRoot = path.join(projectRoot, '02_Assets', 'MediaInbox')
-const userMediaRoot = path.join(webRoot, 'public', 'media', 'user')
+const virtualPrivateDataId = 'virtual:starmap-private-data'
+const resolvedPrivateDataId = `\0${virtualPrivateDataId}`
+let privateRoot
+let dataRoot
+let editorStatePath
+let localTravelMapPath
+let mediaCatalogPath
+let mediaSourceIndexPath
+let inboxRoot
+let userMediaRoot
+
+const configurePrivatePaths = (requestedRoot) => {
+  const environment = requestedRoot
+    ? { ...process.env, STARMAP_PRIVATE_ROOT: requestedRoot }
+    : process.env
+  const paths = getPrivatePaths(environment)
+  privateRoot = paths.root
+  dataRoot = paths.dataRoot
+  editorStatePath = paths.editorStatePath
+  localTravelMapPath = paths.localTravelMapPath
+  mediaCatalogPath = paths.mediaCatalogPath
+  mediaSourceIndexPath = paths.mediaSourceIndexPath
+  inboxRoot = paths.inboxRoot
+  userMediaRoot = paths.userMediaRoot
+}
+
+configurePrivatePaths()
 const editorHeader = 'x-travelatlas-local-editor'
 const maxUploadBytes = 250 * 1024 * 1024
 const citySearchDispatcher = new EnvHttpProxyAgent()
@@ -478,14 +498,19 @@ const updateDroneSidecar = async (cityRoot, destination, metadata, imageMetadata
 const runImporter = async () => {
   const command = process.execPath
   const script = path.join(webRoot, 'scripts', 'import-media.mjs')
-  const preflight = await execFileAsync(command, [script], { cwd: webRoot, maxBuffer: 4 * 1024 * 1024 })
+  const importerOptions = {
+    cwd: webRoot,
+    env: { ...process.env, STARMAP_PRIVATE_ROOT: privateRoot },
+    maxBuffer: 8 * 1024 * 1024,
+  }
+  const preflight = await execFileAsync(command, [script], importerOptions)
   const blockingPattern = /需要处理|缺少日期或分辨率|缺少日期、分辨率或有效坐标|无法读取|找不到国家|找不到城市/
   if (blockingPattern.test(`${preflight.stdout}\n${preflight.stderr}`)) {
     const error = new Error('媒体预检发现未解决信息，已停止导入。')
     error.details = `${preflight.stdout}\n${preflight.stderr}`.trim()
     throw error
   }
-  const imported = await execFileAsync(command, [script, '--apply'], { cwd: webRoot, maxBuffer: 8 * 1024 * 1024 })
+  const imported = await execFileAsync(command, [script, '--apply'], importerOptions)
   return `${imported.stdout}\n${imported.stderr}`.trim()
 }
 
@@ -709,11 +734,41 @@ const authorizeWrite = (request) => (
   && allowedOrigins(request)
 )
 
-export function travelAtlasLocalEditor() {
+export function travelAtlasLocalEditor(options = {}) {
+  const profile = options.profile === 'personal' ? 'personal' : 'public'
+  configurePrivatePaths(options.privateRoot)
+
   return {
     name: 'travelatlas-local-editor',
-    apply: 'serve',
+    resolveId(id) {
+      if (id === virtualPrivateDataId) return resolvedPrivateDataId
+    },
+    async load(id) {
+      if (id !== resolvedPrivateDataId) return undefined
+      const privateData = profile === 'personal'
+        ? {
+            privateEditorState: await readJson(editorStatePath, undefined),
+            privateMediaCatalog: await readJson(mediaCatalogPath, undefined),
+            privateTravelMap: await readJson(localTravelMapPath, undefined),
+          }
+        : {
+            privateEditorState: undefined,
+            privateMediaCatalog: undefined,
+            privateTravelMap: undefined,
+          }
+      return Object.entries(privateData)
+        .map(([name, value]) => `export const ${name} = ${JSON.stringify(value)};`)
+        .join('\n')
+    },
     configureServer(server) {
+      if (profile !== 'personal') return
+      server.watcher.add(dataRoot)
+      server.watcher.on('change', (changedPath) => {
+        if (!path.resolve(changedPath).startsWith(path.resolve(dataRoot))) return
+        const privateModule = server.moduleGraph.getModuleById(resolvedPrivateDataId)
+        if (privateModule) server.moduleGraph.invalidateModule(privateModule)
+        server.ws.send({ type: 'full-reload' })
+      })
       server.middlewares.use(async (request, response, next) => {
         const url = new URL(request.url ?? '/', 'http://127.0.0.1')
         if (url.pathname.startsWith('/media/user/')) {
@@ -856,6 +911,12 @@ export function travelAtlasLocalEditor() {
           })
         }
       })
+    },
+    async closeBundle() {
+      if (profile !== 'personal' || !(await exists(userMediaRoot))) return
+      const outputMediaRoot = path.join(webRoot, 'dist', 'media', 'user')
+      await mkdir(path.dirname(outputMediaRoot), { recursive: true })
+      await cp(userMediaRoot, outputMediaRoot, { recursive: true })
     },
   }
 }

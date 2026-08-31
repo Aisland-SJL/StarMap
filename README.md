@@ -48,11 +48,12 @@ Requirements: Git and a current Node.js LTS release compatible with Vite 8.
 git clone https://github.com/Aisland-SJL/StarMap.git
 cd StarMap/01_Web
 npm ci
-Copy-Item .env.example .env.local
-npm run dev -- --host 127.0.0.1 --port 5175
+npm run dev:public
 ```
 
-Open `http://127.0.0.1:5175/`. macOS and Linux users can replace `Copy-Item` with `cp`.
+Open `http://127.0.0.1:5173/`. This public profile uses only neutral sample data and needs no credential.
+
+For a personal atlas, create an external private layer next to the source repository (the official maintenance workspace uses `StarMap/06_private/`), copy `.env.example` to its `config/.env.local`, and run `npm run dev:personal`. In a standalone clone, set `STARMAP_PRIVATE_ROOT` to any private folder or use the ignored `StarMap/06_private/` fallback. Personal configuration, journeys, media, and editor state remain physically outside the source repository.
 
 ## Map credentials — start here
 
@@ -61,18 +62,18 @@ StarMap can start without a token by using its bundled low-resolution Natural Ea
 1. Sign in or create an account at [Cesium ion](https://ion.cesium.com/).
 2. Open [Access Tokens](https://ion.cesium.com/tokens) and create an app-specific public token.
 3. For the easiest local start, keep the normal public scopes; keep every private scope disabled. For a production site, restrict Allowed URLs and accessible assets to what the deployment actually needs.
-4. Open `01_Web/.env.local` and enter the value after `VITE_CESIUM_ION_TOKEN=`.
+4. Open your private layer's `config/.env.local` and enter the value after `VITE_CESIUM_ION_TOKEN=`.
 5. Restart the development server.
 
 Never commit a token or paste it into an AI chat, issue, screenshot, log, or README. A browser-side production token is observable by visitors, so use a separate production token with URL and asset restrictions.
 
 If you want AI assistance, give your Agent this prompt:
 
-> Read `AGENTS.md`, `README.md`, `01_Web/AGENTS.md`, `01_Web/README.md`, and `01_Web/.env.example`. Explain the three StarMap imagery sources and ask whether I need Cesium ion, Tianditu, or only the bundled local fallback. Guide me through obtaining any credentials I choose and configuring `VITE_MAP_SOURCE`, `VITE_CESIUM_ION_TOKEN`, and `VITE_TIANDITU_TOKEN`. Never ask me to paste or reveal a complete token or key; tell me exactly where I should enter it in ignored `01_Web/.env.local`, verify only non-secret presence and live map behavior, then start the local site and explain the basic controls. Preserve all ignored private data and media.
+> Read `AGENTS.md`, `README.md`, `01_Web/AGENTS.md`, `01_Web/README.md`, and `01_Web/.env.example`. Explain the three StarMap imagery sources and ask whether I need Cesium ion, Tianditu, or only the bundled local fallback. Guide me through obtaining any credentials I choose and configuring `VITE_MAP_SOURCE`, `VITE_CESIUM_ION_TOKEN`, and `VITE_TIANDITU_TOKEN`. Never ask me to paste or reveal a complete token or key; tell me exactly where I should enter it in the external private layer's `config/.env.local`, verify only non-secret presence and live map behavior, then start `npm run dev:personal` and explain the basic controls. Never copy private data into the source repository.
 
 ## Switch between Cesium and Tianditu
 
-Cesium remains StarMap's 3D globe engine. The source switch changes only the imagery drawn on that globe. Users who need a mainland-China-accessible source can apply for their own key at [Tianditu Developer Resources](https://lbs.tianditu.gov.cn/) and keep both credentials in the ignored `01_Web/.env.local`:
+Cesium remains StarMap's 3D globe engine. The source switch changes only the imagery drawn on that globe. Users who need a mainland-China-accessible source can apply for their own key at [Tianditu Developer Resources](https://lbs.tianditu.gov.cn/) and keep both credentials in the private layer's `config/.env.local`:
 
 ```text
 VITE_MAP_SOURCE=tianditu
@@ -88,14 +89,14 @@ Development mode includes local editing controls. Use them to add or reorder cou
 
 When drone files are selected, StarMap immediately reads available EXIF/XMP metadata and displays it per file. Values found in the file are locked as file-derived facts. Only missing values become editable; a missing date must be supplied, while coordinates and altitude can be left blank.
 
-For bulk media, place source files under `02_Assets/MediaInbox/` following its tracked template, then run:
+For bulk media, follow the tracked `02_Assets/MediaInbox/` template but place real source files under the external private layer's `MediaInbox/`, then run:
 
 ```powershell
 npm run media:check
 npm run media:import
 ```
 
-The importer never rewrites Inbox originals. Personal source media, generated derivatives, local travel records, editor state, and `.env.local` remain ignored by Git.
+The importer never rewrites Inbox originals. Personal source media, generated derivatives, local travel records, editor state, and `.env.local` stay in the external private layer and never enter the source repository.
 
 ## Build and verify
 
@@ -103,12 +104,12 @@ From `01_Web/`:
 
 ```powershell
 npm run lint
-npm run build
+npm run build:public
 npm run privacy:check
 npm run media:check
 ```
 
-`npm run build` creates a static public-display build in `01_Web/dist/`. Serve that folder with any static host. Configure `VITE_CESIUM_ION_TOKEN`, `VITE_TIANDITU_TOKEN`, and `VITE_MAP_SOURCE` in the hosting platform before building when their corresponding online imagery is required.
+`npm run build:public` creates a static public-display build in `01_Web/dist/`. `npm run release:check` goes further: it requires a clean worktree, archives only Git-tracked files into a temporary clean room, installs dependencies, lints, and rebuilds there. This proves an external private layer cannot leak into a public release. Use `build:personal` only for a private deployment you control.
 
 ## Updates
 
@@ -123,16 +124,16 @@ Forks can point the checker at their own Releases by setting `VITE_GITHUB_REPOSI
 | Path | Purpose |
 | --- | --- |
 | `01_Web/` | React, TypeScript, Vite, and Cesium application |
-| `02_Assets/MediaInbox/` | Private, source-preserving media intake template |
+| `02_Assets/MediaInbox/` | Tracked neutral template for the external private Inbox |
 | `03_Reference/` | Architecture, privacy, and media workflow references |
 | `05_Test/` | Verification guidance |
 
 ## Privacy and security
 
-- Real tokens belong only in ignored local or hosting environment configuration.
-- Personal travel data and user media are ignored by default.
-- Run `npm run privacy:check` before every public contribution or deployment.
-- Never push `.env.local`, private media, generated personal catalogs, or credentials.
+- Real tokens belong only in the external private layer or hosting environment configuration.
+- Personal travel data and user media belong only in the external private layer, outside the Git repository.
+- `.gitignore` is a second safety net, not the primary separation mechanism.
+- Run `npm run release:check` before every public release; never push `.env.local`, private media, personal catalogs, or credentials.
 
 ## License
 
