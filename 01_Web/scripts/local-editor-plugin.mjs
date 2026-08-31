@@ -24,6 +24,7 @@ let mediaCatalogPath
 let mediaSourceIndexPath
 let inboxRoot
 let userMediaRoot
+let cesiumAccessToken = ''
 
 const configurePrivatePaths = (requestedRoot) => {
   const environment = requestedRoot
@@ -249,6 +250,26 @@ const addCountry = async (input) => {
 const citySearchCache = new Map()
 let citySearchQueue = Promise.resolve()
 let lastCitySearchAt = 0
+const citySearchTimeoutMs = 9_000
+
+const fetchCityJson = async (url, label, headers = {}) => {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), citySearchTimeoutMs)
+  try {
+    const response = await proxyAwareFetch(url, {
+      dispatcher: citySearchDispatcher,
+      headers,
+      signal: controller.signal,
+    })
+    if (!response.ok) throw new Error(`${label} returned ${response.status}`)
+    return await response.json()
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error(`${label} 请求超过 9 秒，已自动停止。`, { cause: error })
+    throw new Error(`${label} 暂时不可用。`, { cause: error })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
 const queueCitySearch = (search) => {
   const queued = citySearchQueue.then(async () => {
@@ -261,19 +282,51 @@ const queueCitySearch = (search) => {
   return queued
 }
 
-const searchCityCatalog = async (query, countryCode) => {
-  const normalizedQuery = requireText(query, '城市名称')
-  const normalizedCountryCode = requireText(countryCode, '国家代码').toLowerCase()
-  if (!/^[a-z]{2}$/.test(normalizedCountryCode)) throw new Error('国家代码无效。')
-  const cacheKey = `${normalizedCountryCode}:${normalizedQuery.toLocaleLowerCase()}`
-  const cached = citySearchCache.get(cacheKey)
-  if (cached) return cached
+const searchCesiumCityCatalog = async (query, country) => {
+  if (!cesiumAccessToken) return []
+  const url = new URL('https://api.cesium.com/v1/geocode/search')
+  url.search = new URLSearchParams({
+    text: `${query}, ${country.nameEn}`,
+    access_token: cesiumAccessToken,
+    size: '8',
+  }).toString()
+  const body = await fetchCityJson(url, 'Cesium ion geocode')
+  const seen = new Set()
+  return (Array.isArray(body?.features) ? body.features : []).flatMap((feature) => {
+    const coordinates = feature?.geometry?.coordinates
+    const properties = feature?.properties ?? {}
+    const lng = Number(coordinates?.[0])
+    const lat = Number(coordinates?.[1])
+    const resultCountryCode = String(properties.country_a ?? '').toUpperCase()
+    if (
+      !Number.isFinite(lat)
+      || !Number.isFinite(lng)
+      || (resultCountryCode && ![country.countryCode, country.countryCode3].includes(resultCountryCode))
+    ) return []
+    const label = String(properties.label ?? properties.name ?? '').trim()
+    const nameEn = String(properties.name ?? label.split(',')[0] ?? '').trim()
+    if (!nameEn) return []
+    const id = String(properties.gid ?? `cesium-${lat}-${lng}`)
+    if (seen.has(id)) return []
+    seen.add(id)
+    return [{
+      id,
+      nameZh: /\p{Script=Han}/u.test(query) ? query : nameEn,
+      nameEn,
+      countryCode: country.countryCode,
+      lat,
+      lng,
+      detail: `${label || country.nameEn} · Cesium ion`,
+      provider: 'cesium',
+    }]
+  })
+}
 
-  const results = await queueCitySearch(async () => {
+const searchOpenStreetMapCityCatalog = async (query, country) => queueCitySearch(async () => {
     const url = new URL('https://nominatim.openstreetmap.org/search')
     url.search = new URLSearchParams({
-      q: normalizedQuery,
-      countrycodes: normalizedCountryCode,
+      q: query,
+      countrycodes: country.countryCode.toLowerCase(),
       featureType: 'settlement',
       layer: 'address',
       format: 'jsonv2',
@@ -282,17 +335,13 @@ const searchCityCatalog = async (query, countryCode) => {
       limit: '8',
       'accept-language': 'zh-CN,en',
     }).toString()
-    const response = await proxyAwareFetch(url, {
-      dispatcher: citySearchDispatcher,
-      headers: {
-        'user-agent': 'StarMap-LocalEditor/1.0 (local-first travel atlas editor)',
-        referer: 'http://127.0.0.1/',
-      },
+    const body = await fetchCityJson(url, 'OpenStreetMap 城市检索', {
+      'user-agent': 'StarMap-LocalEditor/1.0 (local-first travel atlas editor)',
+      referer: 'http://127.0.0.1/',
     })
-    if (!response.ok) throw new Error(`城市检索服务暂时不可用（${response.status}）。`)
-    const body = await response.json()
     const seen = new Set()
-    return body.flatMap((place) => {
+    const normalizedQueryName = query.normalize('NFKC').toLocaleLowerCase()
+    return (Array.isArray(body) ? body : []).flatMap((place) => {
       const lat = Number(place.lat)
       const lng = Number(place.lon)
       const address = place.address ?? {}
@@ -301,20 +350,62 @@ const searchCityCatalog = async (query, countryCode) => {
       const nameZh = names['name:zh'] || names['name:zh-Hans'] || names['name:zh_CN'] || nameEn
       const id = `${place.osm_type ?? 'place'}-${place.osm_id ?? place.place_id}`
       if (!nameEn || !Number.isFinite(lat) || !Number.isFinite(lng) || seen.has(id)) return []
+      const normalizedZhName = String(nameZh).normalize('NFKC').toLocaleLowerCase()
+      const normalizedEnName = String(nameEn).normalize('NFKC').toLocaleLowerCase()
+      // Nominatim can treat a short Chinese query as a substring of an unrelated
+      // Chinese label. Reject that misleading candidate instead of silently adding it.
+      if (
+        /\p{Script=Han}/u.test(query)
+        && normalizedZhName !== normalizedQueryName
+        && normalizedEnName !== normalizedQueryName
+      ) return []
       seen.add(id)
       return [{
         id,
         nameZh,
         nameEn,
-        countryCode: normalizedCountryCode.toUpperCase(),
+        countryCode: country.countryCode,
         lat,
         lng,
-        detail: [address.state, address.region, address.country].filter(Boolean).join(' · '),
+        detail: [...[address.state, address.region, address.country].filter(Boolean), 'OpenStreetMap'].join(' · '),
+        provider: 'openstreetmap',
       }]
     })
   })
-  citySearchCache.set(cacheKey, results)
-  return results
+
+const searchCityCatalog = async (query, countryCode) => {
+  const normalizedQuery = requireText(query, '城市名称')
+  const normalizedCountryCode = requireText(countryCode, '国家代码').toUpperCase()
+  if (!/^[A-Z]{2}$/.test(normalizedCountryCode)) throw new Error('国家代码无效。')
+  const country = countryCatalogByCode.get(normalizedCountryCode)
+  if (!country) throw new Error('没有找到这个国家，无法限制城市检索范围。')
+  const cacheKey = `${cesiumAccessToken ? 'ion' : 'osm'}:${normalizedCountryCode}:${normalizedQuery.toLocaleLowerCase()}`
+  const cached = citySearchCache.get(cacheKey)
+  if (cached) return cached
+
+  let cesiumError
+  if (cesiumAccessToken) {
+    try {
+      const cesiumResults = await searchCesiumCityCatalog(normalizedQuery, country)
+      if (cesiumResults.length > 0) {
+        citySearchCache.set(cacheKey, cesiumResults)
+        return cesiumResults
+      }
+    } catch (error) {
+      cesiumError = error
+    }
+  }
+
+  try {
+    const openStreetMapResults = await searchOpenStreetMapCityCatalog(normalizedQuery, country)
+    citySearchCache.set(cacheKey, openStreetMapResults)
+    return openStreetMapResults
+  } catch {
+    const providerSummary = cesiumError
+      ? 'Cesium ion 与 OpenStreetMap 均暂时不可用'
+      : 'OpenStreetMap 暂时不可用'
+    throw new Error(`${providerSummary}。请稍后重试，或改用手动坐标。`)
+  }
 }
 
 const countryIdForRecord = (record) => slugify(record.country_en || record.country || 'unknown-country')
@@ -737,6 +828,9 @@ const authorizeWrite = (request) => (
 export function travelAtlasLocalEditor(options = {}) {
   const profile = options.profile === 'personal' ? 'personal' : 'public'
   configurePrivatePaths(options.privateRoot)
+  cesiumAccessToken = typeof options.cesiumAccessToken === 'string'
+    ? options.cesiumAccessToken.trim()
+    : ''
 
   return {
     name: 'travelatlas-local-editor',

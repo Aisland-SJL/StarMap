@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import cesium from 'vite-plugin-cesium'
@@ -11,12 +11,18 @@ import { getPrivatePaths } from './scripts/private-profile.mjs'
 export default defineConfig(({ mode }) => {
   const profile = mode === 'personal' ? 'personal' : 'public'
   const privatePaths = getPrivatePaths()
+  const envDir = profile === 'personal' ? privatePaths.configRoot : false
+  const personalEnv = profile === 'personal' ? loadEnv(mode, envDir, '') : {}
 
   return {
     // Public mode never reads repository-local .env files. Hosting variables from process.env still work.
-    envDir: profile === 'personal' ? privatePaths.configRoot : false,
+    envDir,
     plugins: [
-      travelAtlasLocalEditor({ profile, privateRoot: privatePaths.root }),
+      travelAtlasLocalEditor({
+        profile,
+        privateRoot: privatePaths.root,
+        cesiumAccessToken: personalEnv.VITE_CESIUM_ION_TOKEN,
+      }),
       react(),
       tailwindcss(),
       cesium(),

@@ -37,6 +37,7 @@ export type CitySearchOption = {
   lat: number
   lng: number
   detail: string
+  provider: 'cesium' | 'openstreetmap' | 'manual'
 }
 
 export const searchLocalCountries = async (query: string, signal?: AbortSignal) => {

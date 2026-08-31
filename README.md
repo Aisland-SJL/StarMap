@@ -61,7 +61,7 @@ StarMap can start without a token by using its bundled low-resolution Natural Ea
 
 1. Sign in or create an account at [Cesium ion](https://ion.cesium.com/).
 2. Open [Access Tokens](https://ion.cesium.com/tokens) and create an app-specific public token.
-3. For the easiest local start, keep the normal public scopes; keep every private scope disabled. For a production site, restrict Allowed URLs and accessible assets to what the deployment actually needs.
+3. For the easiest local start, keep the normal public scopes, including `geocode` if you want city-name search; keep every private scope disabled. For a production site, restrict Allowed URLs and accessible assets to what the deployment actually needs.
 4. Open your private layer's `config/.env.local` and enter the value after `VITE_CESIUM_ION_TOKEN=`.
 5. Restart the development server.
 
@@ -86,6 +86,8 @@ VITE_TIANDITU_TOKEN=
 ## Add your journeys and media
 
 Development mode includes local editing controls. Use them to add or reorder countries and cities, hide or restore items, choose photo covers, and import city or drone media. Production builds do not include these write controls.
+
+City creation uses Cesium ion geocoding first when the personal token is configured with the `geocode` public scope. If ion is unavailable, has no result, or exceeds nine seconds, StarMap falls back to an explicitly triggered, country-filtered OpenStreetMap lookup. The interface never spins indefinitely: users can retry with the local/English city name or switch to manual latitude and longitude entry.
 
 When drone files are selected, StarMap immediately reads available EXIF/XMP metadata and displays it per file. Values found in the file are locked as file-derived facts. Only missing values become editable; a missing date must be supplied, while coordinates and altitude can be left blank.
 

@@ -5308,6 +5308,22 @@ button {
     0 8px 22px rgba(8, 145, 178, 0.12);
 }
 
+.atlas-local-editor-form > .atlas-local-editor-mode-toggle {
+  min-height: 30px;
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.24);
+  color: rgba(203, 213, 225, 0.76);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.atlas-local-editor-form > .atlas-local-editor-mode-toggle:hover,
+.atlas-local-editor-form > .atlas-local-editor-mode-toggle:focus-visible {
+  border-color: rgba(103, 232, 249, 0.38);
+  background: rgba(8, 145, 178, 0.14);
+  color: #cffafe;
+}
+
 .atlas-drone-metadata-list {
   display: grid;
   max-height: min(430px, 44dvh);
