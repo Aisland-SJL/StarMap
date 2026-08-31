@@ -898,9 +898,12 @@ export function travelAtlasLocalEditor(options = {}) {
     },
     configureServer(server) {
       if (profile !== 'personal') return
+      let editorMutationDepth = 0
+      let ignoreWatcherUntil = 0
       server.watcher.add(dataRoot)
       server.watcher.on('change', (changedPath) => {
         if (!path.resolve(changedPath).startsWith(path.resolve(dataRoot))) return
+        if (editorMutationDepth > 0 || Date.now() < ignoreWatcherUntil) return
         const privateModule = server.moduleGraph.getModuleById(resolvedPrivateDataId)
         if (privateModule) server.moduleGraph.invalidateModule(privateModule)
         server.ws.send({ type: 'full-reload' })
@@ -945,100 +948,106 @@ export function travelAtlasLocalEditor(options = {}) {
 
           if (!authorizeWrite(request)) return sendJson(response, 403, { ok: false, error: '仅允许本机编辑会话写入。' })
 
-          if (request.method === 'PUT' && url.pathname === '/__travelatlas/editor/state') {
-            const state = normalizeState(await readJsonBody(request))
-            await atomicJsonWrite(editorStatePath, state)
-            return sendJson(response, 200, { ok: true, state })
-          }
-
-          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/records') {
-            const result = await addTravelRecord(await readJsonBody(request))
-            return sendJson(response, 201, { ok: true, ...result })
-          }
-
-          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/countries') {
-            const result = await addCountry(await readJsonBody(request))
-            return sendJson(response, 201, { ok: true, ...result })
-          }
-
-          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/upload') {
-            const countryId = url.searchParams.get('countryId') ?? ''
-            const cityId = url.searchParams.get('cityId') ?? ''
-            const kind = url.searchParams.get('kind') ?? 'photo'
-            const fileName = url.searchParams.get('fileName') ?? ''
-            if (!['photo', 'panorama360', 'aerialPhoto'].includes(kind)) throw new Error('不支持的媒体类型。')
-
-            const location = await getLocation(countryId, cityId)
-            const countryFolder = safeSegment(location.countryName, '国家名')
-            const cityFolder = safeSegment(location.cityName, '城市名')
-            const cityRoot = path.join(inboxRoot, countryFolder, cityFolder)
-            const mediaFolder = kind === 'photo' ? 'photos' : 'drone'
-            const destination = await reserveDestination(path.join(cityRoot, mediaFolder), fileName)
-            const extension = path.extname(destination).toLowerCase()
-            if (!['.jpg', '.jpeg', '.png', '.webp', '.avif'].includes(extension)) {
-              throw new Error('当前网页编辑器只接收 JPG、PNG、WebP 或 AVIF 图片。')
-            }
-            let droneMetadata
-            if (kind !== 'photo') {
-              const date = url.searchParams.get('date') ?? ''
-              const latText = url.searchParams.get('lat')
-              const lngText = url.searchParams.get('lng')
-              const lat = latText === null || latText === '' ? undefined : Number(latText)
-              const lng = lngText === null || lngText === '' ? undefined : Number(lngText)
-              const altitudeText = url.searchParams.get('altitudeMeters')
-              const altitudeMeters = altitudeText ? Number(altitudeText) : undefined
-              const relativeAltitudeText = url.searchParams.get('relativeAltitudeMeters')
-              const relativeAltitudeMeters = relativeAltitudeText ? Number(relativeAltitudeText) : undefined
-              if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('无人机影像必须填写有效日期。')
-              if ((lat === undefined) !== (lng === undefined)) {
-                throw new Error('经纬度需要同时填写，或同时留空。')
-              }
-              if (
-                (lat !== undefined && (!Number.isFinite(lat) || lat < -90 || lat > 90))
-                || (lng !== undefined && (!Number.isFinite(lng) || lng < -180 || lng > 180))
-              ) {
-                throw new Error('经纬度超出有效范围。')
-              }
-              droneMetadata = {
-                kind,
-                date,
-                lat,
-                lng,
-                altitudeMeters: Number.isFinite(altitudeMeters) ? altitudeMeters : undefined,
-                relativeAltitudeMeters: Number.isFinite(relativeAltitudeMeters) ? relativeAltitudeMeters : undefined,
-                titleZh: url.searchParams.get('titleZh') || `${location.cityName}无人机影像`,
-                titleEn: url.searchParams.get('titleEn') || `${location.cityName} Drone Media`,
-              }
+          editorMutationDepth += 1
+          try {
+            if (request.method === 'PUT' && url.pathname === '/__travelatlas/editor/state') {
+              const state = normalizeState(await readJsonBody(request))
+              await atomicJsonWrite(editorStatePath, state)
+              return sendJson(response, 200, { ok: true, state })
             }
 
-            const imageMetadata = await writeUpload(request, destination, kind)
-            if (droneMetadata) await updateDroneSidecar(cityRoot, destination, droneMetadata, imageMetadata)
+            if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/records') {
+              const result = await addTravelRecord(await readJsonBody(request))
+              return sendJson(response, 201, { ok: true, ...result })
+            }
 
-            const fileStats = await stat(destination)
-            return sendJson(response, 201, {
-              ok: true,
-              fileName: path.basename(destination),
-              bytes: fileStats.size,
-              sourcePath: path.relative(inboxRoot, destination).split(path.sep).join('/'),
-            })
+            if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/countries') {
+              const result = await addCountry(await readJsonBody(request))
+              return sendJson(response, 201, { ok: true, ...result })
+            }
+
+            if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/upload') {
+              const countryId = url.searchParams.get('countryId') ?? ''
+              const cityId = url.searchParams.get('cityId') ?? ''
+              const kind = url.searchParams.get('kind') ?? 'photo'
+              const fileName = url.searchParams.get('fileName') ?? ''
+              if (!['photo', 'panorama360', 'aerialPhoto'].includes(kind)) throw new Error('不支持的媒体类型。')
+
+              const location = await getLocation(countryId, cityId)
+              const countryFolder = safeSegment(location.countryName, '国家名')
+              const cityFolder = safeSegment(location.cityName, '城市名')
+              const cityRoot = path.join(inboxRoot, countryFolder, cityFolder)
+              const mediaFolder = kind === 'photo' ? 'photos' : 'drone'
+              const destination = await reserveDestination(path.join(cityRoot, mediaFolder), fileName)
+              const extension = path.extname(destination).toLowerCase()
+              if (!['.jpg', '.jpeg', '.png', '.webp', '.avif'].includes(extension)) {
+                throw new Error('当前网页编辑器只接收 JPG、PNG、WebP 或 AVIF 图片。')
+              }
+              let droneMetadata
+              if (kind !== 'photo') {
+                const date = url.searchParams.get('date') ?? ''
+                const latText = url.searchParams.get('lat')
+                const lngText = url.searchParams.get('lng')
+                const lat = latText === null || latText === '' ? undefined : Number(latText)
+                const lng = lngText === null || lngText === '' ? undefined : Number(lngText)
+                const altitudeText = url.searchParams.get('altitudeMeters')
+                const altitudeMeters = altitudeText ? Number(altitudeText) : undefined
+                const relativeAltitudeText = url.searchParams.get('relativeAltitudeMeters')
+                const relativeAltitudeMeters = relativeAltitudeText ? Number(relativeAltitudeText) : undefined
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('无人机影像必须填写有效日期。')
+                if ((lat === undefined) !== (lng === undefined)) {
+                  throw new Error('经纬度需要同时填写，或同时留空。')
+                }
+                if (
+                  (lat !== undefined && (!Number.isFinite(lat) || lat < -90 || lat > 90))
+                  || (lng !== undefined && (!Number.isFinite(lng) || lng < -180 || lng > 180))
+                ) {
+                  throw new Error('经纬度超出有效范围。')
+                }
+                droneMetadata = {
+                  kind,
+                  date,
+                  lat,
+                  lng,
+                  altitudeMeters: Number.isFinite(altitudeMeters) ? altitudeMeters : undefined,
+                  relativeAltitudeMeters: Number.isFinite(relativeAltitudeMeters) ? relativeAltitudeMeters : undefined,
+                  titleZh: url.searchParams.get('titleZh') || `${location.cityName}无人机影像`,
+                  titleEn: url.searchParams.get('titleEn') || `${location.cityName} Drone Media`,
+                }
+              }
+
+              const imageMetadata = await writeUpload(request, destination, kind)
+              if (droneMetadata) await updateDroneSidecar(cityRoot, destination, droneMetadata, imageMetadata)
+
+              const fileStats = await stat(destination)
+              return sendJson(response, 201, {
+                ok: true,
+                fileName: path.basename(destination),
+                bytes: fileStats.size,
+                sourcePath: path.relative(inboxRoot, destination).split(path.sep).join('/'),
+              })
+            }
+
+            if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/import') {
+              const input = await readJsonBody(request)
+              const sourcePaths = isStringArray(input?.sourcePaths)
+                ? [...new Set(input.sourcePaths.map(normalizeInboxRelativePath).filter(Boolean))]
+                : []
+              const output = await runImporter()
+              const restoredMediaIds = await restoreImportedMedia(sourcePaths)
+              return sendJson(response, 200, { ok: true, output, restoredMediaIds })
+            }
+
+            if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/media/delete') {
+              const result = await deleteHiddenDroneMedia(await readJsonBody(request))
+              return sendJson(response, 200, { ok: true, ...result })
+            }
+
+            return sendJson(response, 404, { ok: false, error: '未知的本地编辑接口。' })
+          } finally {
+            editorMutationDepth -= 1
+            if (editorMutationDepth === 0) ignoreWatcherUntil = Date.now() + 1_500
           }
-
-          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/import') {
-            const input = await readJsonBody(request)
-            const sourcePaths = isStringArray(input?.sourcePaths)
-              ? [...new Set(input.sourcePaths.map(normalizeInboxRelativePath).filter(Boolean))]
-              : []
-            const output = await runImporter()
-            const restoredMediaIds = await restoreImportedMedia(sourcePaths)
-            return sendJson(response, 200, { ok: true, output, restoredMediaIds })
-          }
-
-          if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/media/delete') {
-            const result = await deleteHiddenDroneMedia(await readJsonBody(request))
-            return sendJson(response, 200, { ok: true, ...result })
-          }
-
-          return sendJson(response, 404, { ok: false, error: '未知的本地编辑接口。' })
         } catch (error) {
           const details = typeof error?.details === 'string' ? error.details : undefined
           return sendJson(response, 400, {
