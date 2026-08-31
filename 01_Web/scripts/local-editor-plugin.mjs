@@ -265,6 +265,7 @@ const fetchCityJson = async (url, label, headers = {}) => {
     return await response.json()
   } catch (error) {
     if (controller.signal.aborted) throw new Error(`${label} 请求超过 9 秒，已自动停止。`, { cause: error })
+    if (error instanceof Error && error.message.startsWith(`${label} returned `)) throw error
     throw new Error(`${label} 暂时不可用。`, { cause: error })
   } finally {
     clearTimeout(timeout)
@@ -282,21 +283,44 @@ const queueCitySearch = (search) => {
   return queued
 }
 
-const searchCesiumCityCatalog = async (query, country) => {
+const normalizeCityReferer = (value) => {
+  try {
+    const parsed = new URL(value || 'http://127.0.0.1:5173/')
+    if (
+      parsed.protocol === 'http:'
+      && (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost')
+    ) return `${parsed.origin}/`
+  } catch {
+    // Fall through to the fixed Codex preview origin.
+  }
+  return 'http://127.0.0.1:5173/'
+}
+
+const searchCesiumCityCatalog = async (query, country, requestReferer) => {
   if (!cesiumAccessToken) return []
   const url = new URL('https://api.cesium.com/v1/geocode/search')
   url.search = new URLSearchParams({
     text: `${query}, ${country.nameEn}`,
     access_token: cesiumAccessToken,
     size: '8',
+    'boundary.country': country.countryCode3 || country.countryCode,
   }).toString()
-  const body = await fetchCityJson(url, 'Cesium ion geocode')
+  const referer = normalizeCityReferer(requestReferer)
+  const body = await fetchCityJson(url, 'Cesium ion geocode', {
+    origin: new URL(referer).origin,
+    referer,
+  })
   const seen = new Set()
   return (Array.isArray(body?.features) ? body.features : []).flatMap((feature) => {
     const coordinates = feature?.geometry?.coordinates
+    const bbox = feature?.bbox
     const properties = feature?.properties ?? {}
-    const lng = Number(coordinates?.[0])
-    const lat = Number(coordinates?.[1])
+    const lng = Number(coordinates?.[0] ?? (
+      Array.isArray(bbox) && bbox.length === 4 ? (Number(bbox[0]) + Number(bbox[2])) / 2 : Number.NaN
+    ))
+    const lat = Number(coordinates?.[1] ?? (
+      Array.isArray(bbox) && bbox.length === 4 ? (Number(bbox[1]) + Number(bbox[3])) / 2 : Number.NaN
+    ))
     const resultCountryCode = String(properties.country_a ?? '').toUpperCase()
     if (
       !Number.isFinite(lat)
@@ -352,12 +376,17 @@ const searchOpenStreetMapCityCatalog = async (query, country) => queueCitySearch
       if (!nameEn || !Number.isFinite(lat) || !Number.isFinite(lng) || seen.has(id)) return []
       const normalizedZhName = String(nameZh).normalize('NFKC').toLocaleLowerCase()
       const normalizedEnName = String(nameEn).normalize('NFKC').toLocaleLowerCase()
+      const queryHan = normalizedQueryName.match(/\p{Script=Han}/gu)?.join('') ?? ''
+      const resultHan = normalizedZhName.match(/\p{Script=Han}/gu)?.join('') ?? ''
+      const isPlausibleLocalizedMatch = queryHan.length > 0 && queryHan.length === resultHan.length
       // Nominatim can treat a short Chinese query as a substring of an unrelated
-      // Chinese label. Reject that misleading candidate instead of silently adding it.
+      // Chinese label. Reject that misleading candidate, while allowing equal-length
+      // simplified/traditional variants such as 波尔图 / 波爾圖.
       if (
         /\p{Script=Han}/u.test(query)
         && normalizedZhName !== normalizedQueryName
         && normalizedEnName !== normalizedQueryName
+        && !isPlausibleLocalizedMatch
       ) return []
       seen.add(id)
       return [{
@@ -373,7 +402,7 @@ const searchOpenStreetMapCityCatalog = async (query, country) => queueCitySearch
     })
   })
 
-const searchCityCatalog = async (query, countryCode) => {
+const searchCityCatalog = async (query, countryCode, requestReferer) => {
   const normalizedQuery = requireText(query, '城市名称')
   const normalizedCountryCode = requireText(countryCode, '国家代码').toUpperCase()
   if (!/^[A-Z]{2}$/.test(normalizedCountryCode)) throw new Error('国家代码无效。')
@@ -386,13 +415,14 @@ const searchCityCatalog = async (query, countryCode) => {
   let cesiumError
   if (cesiumAccessToken) {
     try {
-      const cesiumResults = await searchCesiumCityCatalog(normalizedQuery, country)
+      const cesiumResults = await searchCesiumCityCatalog(normalizedQuery, country, requestReferer)
       if (cesiumResults.length > 0) {
         citySearchCache.set(cacheKey, cesiumResults)
         return cesiumResults
       }
     } catch (error) {
       cesiumError = error
+      console.warn(`[StarMap editor] Cesium ion geocode unavailable; using OpenStreetMap (${error.message})`)
     }
   }
 
@@ -896,6 +926,7 @@ export function travelAtlasLocalEditor(options = {}) {
             const results = await searchCityCatalog(
               url.searchParams.get('q') ?? '',
               url.searchParams.get('countryCode') ?? '',
+              request.headers.referer ?? request.headers.origin,
             )
             return sendJson(response, 200, { ok: true, results })
           }

@@ -5158,14 +5158,16 @@ button {
   line-height: 1.5;
 }
 
-.atlas-local-editor-attribution {
+.atlas-local-editor-form > .atlas-local-editor-attribution {
   margin: -2px 0 0;
-  color: rgba(148, 163, 184, 0.68);
+  color: rgba(148, 163, 184, 0.48);
   font-size: 9px;
+  line-height: 1.45;
+  opacity: 0.58;
 }
 
-.atlas-local-editor-attribution a {
-  color: rgba(125, 211, 252, 0.84);
+.atlas-local-editor-form > .atlas-local-editor-attribution a {
+  color: rgba(125, 211, 252, 0.64);
   text-decoration: none;
 }
 

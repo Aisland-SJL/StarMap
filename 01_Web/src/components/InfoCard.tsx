@@ -423,7 +423,6 @@ export function InfoCard({ mode, selectedCountryId, selectedCityId, onSelectCity
 
             {isCountryGrid && cityEditing && showAddCity ? (
               <form className="atlas-local-editor-form atlas-local-editor-form-dark" onSubmit={addCity} onClick={(event) => event.stopPropagation()}>
-                <p>添加到 {country?.nameZh}；优先使用 Cesium ion，失败后自动回退 OpenStreetMap。中文无结果时可尝试当地或英文名称。</p>
                 {isManualCityEntry ? (
                   <div className="atlas-local-editor-form-grid">
                     <label className="atlas-local-editor-date-field">
