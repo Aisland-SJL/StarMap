@@ -215,6 +215,33 @@ const searchCountryCatalog = (query) => countryCatalog
     region: country.region,
   }))
 
+const sortCountryIdsByLatestVisit = (records, addedCountries, currentOrder) => {
+  const latestDateByCountry = new Map()
+  const rememberDate = (countryId, value) => {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return
+    const current = latestDateByCountry.get(countryId)
+    if (!current || value > current) latestDateByCountry.set(countryId, value)
+  }
+
+  for (const record of records) {
+    const countryId = countryIdForRecord(record)
+    rememberDate(countryId, record.start_date)
+    rememberDate(countryId, record.end_date)
+  }
+  for (const country of addedCountries) rememberDate(country.id, country.visitedDate)
+
+  const countryIds = [...new Set([
+    ...currentOrder,
+    ...records.map(countryIdForRecord),
+    ...addedCountries.map((country) => country.id),
+  ])]
+  const currentRank = new Map(countryIds.map((id, index) => [id, index]))
+  return countryIds.sort((left, right) => {
+    const dateOrder = (latestDateByCountry.get(right) ?? '').localeCompare(latestDateByCountry.get(left) ?? '')
+    return dateOrder || (currentRank.get(left) ?? 0) - (currentRank.get(right) ?? 0)
+  })
+}
+
 const addCountry = async (input) => {
   const countryCode = requireText(input.countryCode, '国家代码').toUpperCase()
   const country = countryCatalogByCode.get(countryCode)
@@ -242,7 +269,11 @@ const addCountry = async (input) => {
     region: country.region,
     visitedDate,
   }]
-  state.countryOrder = [country.id, ...state.countryOrder.filter((id) => id !== country.id)]
+  state.countryOrder = sortCountryIdsByLatestVisit(
+    travelMap.records ?? [],
+    state.addedCountries,
+    state.countryOrder,
+  )
   await atomicJsonWrite(editorStatePath, normalizeState(state))
   return { countryId: country.id }
 }
@@ -850,6 +881,70 @@ const deleteHiddenMedia = async (input) => {
   return { deletedIds: ids, deletedSourceFiles, output }
 }
 
+const deleteHiddenCountries = async (input) => {
+  const ids = isStringArray(input?.ids)
+    ? [...new Set(input.ids.map((id) => id.trim()).filter(Boolean))]
+    : []
+  if (ids.length === 0) throw new Error('没有可删除的隐藏国家。')
+
+  const state = normalizeState(await readJson(editorStatePath, emptyState))
+  const hiddenCountryIds = new Set(state.hiddenCountryIds)
+  if (ids.some((id) => !hiddenCountryIds.has(id))) {
+    throw new Error('只能彻底删除已经隐藏的国家。')
+  }
+
+  const travelMap = await ensureLocalTravelMap()
+  const records = Array.isArray(travelMap.records) ? travelMap.records : []
+  const targetRecords = records.filter((record) => ids.includes(countryIdForRecord(record)))
+  const addedCountryIds = new Set(state.addedCountries.map((country) => country.id))
+  if (ids.some((id) => !targetRecords.some((record) => countryIdForRecord(record) === id) && !addedCountryIds.has(id))) {
+    throw new Error('找不到待删除国家的本地旅行数据，已停止删除。')
+  }
+
+  const catalog = await readJson(mediaCatalogPath, { items: [] })
+  const catalogItems = Array.isArray(catalog.items) ? catalog.items : []
+  const blockingItems = catalogItems.filter((item) => ids.includes(item.countryId))
+  if (blockingItems.length > 0) {
+    const recordsByCityId = new Map(targetRecords.map((record) => [cityIdForRecord(record), record]))
+    const mediaCountByCity = blockingItems.reduce((counts, item) => {
+      const cityId = String(item.cityId ?? '')
+      counts.set(cityId, (counts.get(cityId) ?? 0) + 1)
+      return counts
+    }, new Map())
+    const citySummary = [...mediaCountByCity.entries()].map(([cityId, count]) => {
+      const record = recordsByCityId.get(cityId)
+      const cityName = record?.city || record?.city_en || cityId || '未知城市'
+      return `${cityName}（${count} 个媒体）`
+    }).join('、')
+    throw new Error(`以下城市仍有照片或无人机影像：${citySummary}。请先在对应城市中彻底删除这些媒体。`)
+  }
+
+  const cityIds = new Set(targetRecords.map(cityIdForRecord))
+  const omitCityEntries = (record) => Object.fromEntries(
+    Object.entries(record).filter(([cityId]) => !cityIds.has(cityId)),
+  )
+
+  travelMap.records = records.filter((record) => !ids.includes(countryIdForRecord(record)))
+  travelMap.generated_at = new Date().toISOString()
+  await atomicJsonWrite(localTravelMapPath, travelMap)
+
+  const nextState = normalizeState({
+    ...state,
+    addedCountries: state.addedCountries.filter((country) => !ids.includes(country.id)),
+    countryOrder: state.countryOrder.filter((id) => !ids.includes(id)),
+    hiddenCountryIds: state.hiddenCountryIds.filter((id) => !ids.includes(id)),
+    cityOrderByCountry: Object.fromEntries(
+      Object.entries(state.cityOrderByCountry).filter(([countryId]) => !ids.includes(countryId)),
+    ),
+    hiddenCityIds: state.hiddenCityIds.filter((id) => !cityIds.has(id)),
+    mediaOrderByCity: omitCityEntries(state.mediaOrderByCity),
+    coverMediaByCity: omitCityEntries(state.coverMediaByCity),
+    droneOrderByCity: omitCityEntries(state.droneOrderByCity),
+  })
+  await atomicJsonWrite(editorStatePath, nextState)
+  return { deletedCountryIds: ids, deletedRecordCount: targetRecords.length }
+}
+
 const allowedOrigins = (request) => {
   const origin = request.headers.origin
   if (!origin) return true
@@ -970,6 +1065,11 @@ export function travelAtlasLocalEditor(options = {}) {
             if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/countries') {
               const result = await addCountry(await readJsonBody(request))
               return sendJson(response, 201, { ok: true, ...result })
+            }
+
+            if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/countries/delete') {
+              const result = await deleteHiddenCountries(await readJsonBody(request))
+              return sendJson(response, 200, { ok: true, ...result })
             }
 
             if (request.method === 'POST' && url.pathname === '/__travelatlas/editor/upload') {

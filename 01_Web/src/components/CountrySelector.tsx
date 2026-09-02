@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, Drone, GripVertical, MapPin, Plus, RotateCcw, Settings2, SlidersHorizontal, Undo2, X } from 'lucide-react'
 import { hasDroneMedia } from '../data/droneMedia'
 import { localEditorAvailable, travelAtlasEditorState } from '../data/editorState'
-import { addLocalCountry, reloadAfterLocalSave, searchLocalCountries, updateLocalEditorState } from '../data/localEditorApi'
+import { addLocalCountry, deleteHiddenLocalCountries, reloadAfterLocalSave, searchLocalCountries, updateLocalEditorState } from '../data/localEditorApi'
 import type { CountrySearchOption } from '../data/localEditorApi'
 import { countries, getCitiesForCountry, shouldHideCityFromNavigation } from '../data/travelAtlas'
 import type { CityId, CountryId } from '../types/travel'
@@ -123,6 +123,25 @@ export function CountrySelector({
       reloadAfterLocalSave()
     } catch (error) {
       setEditorNotice(error instanceof Error ? error.message : '恢复失败。')
+      setIsSaving(false)
+    }
+  }
+
+  const deleteHiddenCountries = async () => {
+    if (draftHiddenCountryIds.length === 0) return
+    const confirmed = window.confirm(`确定永久删除已隐藏的 ${draftHiddenCountryIds.length} 个国家吗？\n\n仅当这些国家的所有城市都没有照片或无人机影像时才能删除；已隐藏的媒体也必须先手动彻底删除。`)
+    if (!confirmed) return
+    setIsSaving(true)
+    setEditorNotice('正在彻底删除已隐藏国家…')
+    try {
+      await updateLocalEditorState((current) => ({
+        ...current,
+        hiddenCountryIds: [...new Set([...current.hiddenCountryIds, ...draftHiddenCountryIds])],
+      }))
+      await deleteHiddenLocalCountries(draftHiddenCountryIds)
+      reloadAfterLocalSave()
+    } catch (error) {
+      setEditorNotice(error instanceof Error ? error.message : '删除失败。')
       setIsSaving(false)
     }
   }
@@ -273,9 +292,14 @@ export function CountrySelector({
       ) : null}
 
       {isEditingCountries && draftHiddenCountryIds.length > 0 ? (
-        <button type="button" className="atlas-local-editor-restore" onClick={restoreHiddenCountries} disabled={isSaving}>
-          恢复已隐藏国家（{draftHiddenCountryIds.length}）
-        </button>
+        <div className="atlas-local-editor-hidden-actions">
+          <button type="button" className="atlas-local-editor-restore" onClick={restoreHiddenCountries} disabled={isSaving}>
+            恢复已隐藏国家（{draftHiddenCountryIds.length}）
+          </button>
+          <button type="button" className="atlas-local-editor-delete" onClick={deleteHiddenCountries} disabled={isSaving}>
+            彻底删除国家
+          </button>
+        </div>
       ) : null}
       {editorNotice ? <p className="atlas-local-editor-notice" role="status">{editorNotice}</p> : null}
 
